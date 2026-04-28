@@ -1,0 +1,116 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Modern Design System ────────────────────────── */
+:root {
+  --primary-black: #080808;
+  --premium-gold: #D4AF37;
+  --gold-light: #E5C365;
+  --gold-dark: #B58D21;
+  --charcoal: #121212;
+  --light-bg: #F8F8F6;
+  --cream-bg: #FCFCFA;
+  --text-primary: #111111;
+  --text-secondary: #555555;
+  --text-muted: #999999;
+  --border-light: #EEEEEE;
+  --glass: rgba(255, 255, 255, 0.7);
+  --glass-dark: rgba(0, 0, 0, 0.7);
+}
+
+@layer base {
+  body {
+    font-family: 'Outfit', sans-serif;
+    @apply antialiased text-text-primary bg-white;
+    -webkit-tap-highlight-color: transparent;
+  }
+  h1, h2, h3 { font-family: 'Playfair Display', serif; }
+}
+
+@layer components {
+  /* Premium Buttons */
+  .btn-primary {
+    @apply bg-primary-black text-white px-8 py-3.5 rounded-2xl font-bold text-sm tracking-wide transition-all duration-300
+    hover:bg-charcoal hover:shadow-2xl hover:-translate-y-0.5 active:scale-95 disabled:opacity-50;
+  }
+  
+  .btn-gold {
+    @apply bg-premium-gold text-primary-black px-8 py-3.5 rounded-2xl font-black text-sm tracking-widest transition-all duration-300
+    hover:shadow-xl hover:shadow-premium-gold/20 hover:-translate-y-0.5 active:scale-95;
+    &:hover { background-color: var(--gold-light); }
+  }
+
+
+  .btn-outline {
+    @apply border-2 border-primary-black text-primary-black px-8 py-3.5 rounded-2xl font-bold text-sm transition-all duration-300
+    hover:bg-primary-black hover:text-white active:scale-95;
+  }
+
+  /* Responsive Container */
+  .container-custom {
+    @apply max-w-7xl mx-auto px-5 md:px-8;
+  }
+
+  /* Glassmorphism */
+  .glass {
+    @apply backdrop-blur-xl bg-white/70 border border-white/20;
+  }
+  .glass-dark {
+    @apply backdrop-blur-xl bg-black/60 border border-white/10;
+  }
+
+  /* Card Styles */
+  .card-premium {
+    @apply bg-white rounded-[2rem] border border-border-light shadow-sm hover:shadow-2xl hover:border-premium-gold/30 transition-all duration-500;
+  }
+
+  /* Product Grid Layouts */
+  .grid-products {
+    @apply grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8;
+  }
+}
+
+/* ─── Global Refinements ────────────────────────────── */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Custom Animations */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+.animate-float { animation: float 6s ease-in-out infinite; }
+
+/* Mobile Alignment Fixes */
+@media (max-width: 640px) {
+  .section-title { @apply text-2xl leading-tight; }
+  .btn-primary, .btn-gold, .btn-outline { @apply py-3 px-6 text-xs rounded-xl; }
+}
+
+/* Premium Gradients */
+.bg-gold-gradient {
+  background: linear-gradient(135deg, #D4AF37 0%, #F4E5C2 50%, #B58D21 100%);
+}
+
+/* Marquee Animation */
+.animate-marquee {
+  display: inline-block;
+  animation: marquee 40s linear infinite;
+}
+.animate-marquee2 {
+  display: inline-block;
+  animation: marquee2 40s linear infinite;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-100%); }
+}
+@keyframes marquee2 {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-100%); }
+}
+

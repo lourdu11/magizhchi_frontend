@@ -1,8 +1,7 @@
 import axios from 'axios';
 
-// Use Vite proxy in development (/api → localhost:5000)
-// Use VITE_API_URL in production
-const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
+// Use VITE_API_URL in production, fallback to live Render URL
+const API_URL = import.meta.env.VITE_API_URL || 'https://magizhchi-backend-4.onrender.com/api/v1';
 
 const api = axios.create({
   baseURL: API_URL,

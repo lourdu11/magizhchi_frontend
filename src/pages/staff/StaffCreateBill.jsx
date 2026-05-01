@@ -685,7 +685,7 @@ export default function StaffCreateBill() {
                     className="flex gap-4 group"
                   >
                     <div className="w-14 h-14 rounded-xl bg-white/5 p-1 shrink-0 overflow-hidden border border-white/10">
-                      <img src={item.image || '/placeholder.jpg'} alt="" className="w-full h-full object-cover rounded-lg" />
+                      <SafeImage src={item.image} alt="" className="w-full h-full object-cover rounded-lg" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-white font-bold text-xs line-clamp-1">{item.productName}</p>

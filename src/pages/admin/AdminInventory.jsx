@@ -35,14 +35,21 @@ export default function AdminInventory() {
   });
 
   const { data: inventoryData, isLoading } = useQuery({
-    queryKey: ['admin-inventory', searchTerm, page],
-    queryFn: () => inventoryService.getInventory({ search: searchTerm, page, limit: 25 }).then(r => r.data),
+    queryKey: ['admin-inventory', searchTerm, page, filterStatus],
+    queryFn: () => {
+      const params = { search: searchTerm, page, limit: 25 };
+      if (filterStatus === 'critical') params.status = 'low_stock';
+      if (filterStatus === 'out') params.status = 'out_of_stock';
+      if (filterStatus === 'online') params.onlineEnabled = 'true';
+      if (filterStatus === 'offline') params.offlineEnabled = 'true';
+      return inventoryService.getInventory(params).then(r => r.data);
+    },
   });
 
-  // Reset page on search
+  // Reset page on search or filter change
   useEffect(() => {
     setPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, filterStatus]);
 
   const { data: searchProducts } = useQuery({
     queryKey: ['product-search-link', productSearch],
@@ -51,15 +58,9 @@ export default function AdminInventory() {
   });
 
   const rawItems = inventoryData?.data || [];
-  const items = rawItems.map(i => ({ ...i, availableStock: calcAvail(i) }));
+  const items = rawItems.map(i => ({ ...i, availableStock: i.availableStock ?? calcAvail(i) }));
 
-  const filtered = items.filter(i => {
-    if (filterStatus === 'critical') return i.availableStock <= (i.lowStockThreshold || 5) && i.availableStock > 0;
-    if (filterStatus === 'out') return i.availableStock === 0;
-    if (filterStatus === 'online') return i.onlineEnabled;
-    if (filterStatus === 'offline') return i.offlineEnabled;
-    return true;
-  });
+  const filtered = items; // Backend already filtered this
 
   const lowStockItems = items.filter(i => i.availableStock <= (i.lowStockThreshold || 5));
 

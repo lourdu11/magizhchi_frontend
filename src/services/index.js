@@ -9,6 +9,7 @@ export const authService = {
   forgotPassword: (identifier) => api.post('/auth/forgot-password', { identifier }),
   resetPassword: (data) => api.post('/auth/reset-password', data),
   getMe: () => api.get('/auth/me'),
+  quickGuest: () => api.post('/auth/quick-guest'),
 };
 
 export const productService = {
@@ -62,12 +63,15 @@ export const adminService = {
   getDashboard: () => api.get('/admin/dashboard'),
   getSalesAnalytics: (params) => api.get('/admin/analytics/sales', { params }),
   getAdminProducts: (params) => api.get('/admin/products', { params }),
+  getAdminProductById: (id) => api.get(`/products/admin/detail/${id}`),
   getAllOrders: (params) => api.get('/orders/all', { params }),
   updateOrderStatus: (id, data) => api.put(`/orders/${id}/status`, data),
   getAllUsers: (params) => api.get('/admin/users', { params }),
   toggleBlockUser: (id) => api.put(`/admin/users/${id}/toggle-block`),
   createStaff: (data) => api.post('/admin/staff', data),
-  adjustStock: (data) => api.put('/admin/inventory/adjust', data),
+  getStaff: () => api.get('/admin/staff'),
+  updateStaff: (id, data) => api.put(`/admin/staff/${id}`, data),
+  deleteStaff: (id) => api.delete(`/admin/staff/${id}`),
   updateReturnStatus: (id, data) => api.put(`/orders/${id}/return-status`, data),
   getSettings: () => api.get('/admin/settings'),
   updateSettings: (data) => api.put('/admin/settings', data),
@@ -75,6 +79,13 @@ export const adminService = {
   uploadImage: (formData) => api.post('/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
+  getReturns: () => api.get('/admin/returns'),
+  createReturn: (data) => api.post('/admin/returns', data),
+  getDailyProfitReport: (date) => api.get('/admin/reports/daily', { params: { date } }),
+  getStaffPerformance: () => api.get('/admin/staff/performance'),
+  getWastageHistory: () => api.get('/admin/wastage'),
+  createWastage: (data) => api.post('/admin/wastage', data),
+  reconcileStock: (data) => api.post('/admin/inventory/reconcile', data),
 };
 
 export const reviewService = {
@@ -97,6 +108,7 @@ export const billService = {
   getBill: (id) => api.get(`/bills/${id}`),
   getDailyReport: (date) => api.get('/bills/daily-report', { params: { date } }),
   lookupCustomer: (phone) => api.get(`/bills/customer/${phone}`),
+  getByBarcode: (barcode) => api.get(`/bills/barcode/${barcode}`),
 };
 
 export const bannerService = {
@@ -113,3 +125,34 @@ export const publicService = {
   submitContact: (data) => api.post('/contact', data),
 };
 
+export const purchaseService = {
+  createPurchase: (data) => api.post('/admin/purchases', data),
+  updatePurchase: (id, data) => api.put(`/admin/purchases/${id}`, data),
+  deletePurchase: (id) => api.delete(`/admin/purchases/${id}`),
+  getPurchases: (params) => api.get('/admin/purchases', { params }),
+  getSuppliers: () => api.get('/admin/suppliers'),
+  createSupplier: (data) => api.post('/admin/suppliers', data),
+  updateSupplier: (id, data) => api.put(`/admin/suppliers/${id}`, data),
+  recordPayment: (id, data) => api.put(`/admin/suppliers/${id}/record-payment`, data),
+  updatePayment: (sid, pid, data) => api.put(`/admin/suppliers/${sid}/payments/${pid}`, data),
+  deletePayment: (sid, pid) => api.delete(`/admin/suppliers/${sid}/payments/${pid}`),
+  deleteSupplier: (id) => api.delete(`/admin/suppliers/${id}`),
+};
+
+export const inventoryService = {
+  getInventory:        (params)   => api.get('/admin/inventory', { params }),
+  getInventoryStats:   ()         => api.get('/admin/inventory/stats'),
+  getStats:            ()         => api.get('/admin/inventory/stats'),
+  getLowStock:         ()         => api.get('/admin/inventory/low-stock'),
+  createItem:          (data)     => api.post('/admin/inventory', data),
+  toggleChannel:       (id, data) => api.put(`/admin/inventory/${id}/toggle`, data),
+  updateChannelConfig: (id, data) => api.put(`/admin/inventory/${id}/channel-config`, data),
+  updateSellingPrice:  (id, data) => api.put(`/admin/inventory/${id}/selling-price`, data),
+  adjustStock:         (id, data) => api.put(`/admin/inventory/${id}/adjust`, data),
+  updateDetails:       (id, data) => api.put(`/admin/inventory/${id}/details`, data),
+  linkProduct:         (id, data) => api.put(`/admin/inventory/${id}/link-product`, data),
+  getByBarcode:        (barcode)  => api.get(`/admin/inventory/barcode/${barcode}`),
+  deleteItem:          (id)       => api.delete(`/admin/inventory/${id}`),
+  getAllHistory:       (params)   => api.get('/admin/inventory/all-history', { params }),
+  getHistory:          (id)       => api.get(`/admin/inventory/${id}/history`),
+};

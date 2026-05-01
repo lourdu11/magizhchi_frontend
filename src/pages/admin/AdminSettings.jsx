@@ -17,11 +17,12 @@ export default function AdminSettings() {
 
   const [formData, setFormData] = useState({
     store: { name: '', email: '', phone: '', address: '', gstin: '' },
-    payment: { codEnabled: true, codCharges: 50, codThreshold: 5000 },
-    shipping: { flatRate: 50, freeShippingThreshold: 999 },
+    payment: { onlineEnabled: true, codEnabled: true, codCharges: 50, codThreshold: 50000 },
+    shipping: { flatRateTN: 50, flatRateOut: 100, freeShippingThreshold: 999 },
     notifications: {
-      email: { host: '', port: 587, user: '', password: '' },
-      whatsapp: { adminPhone: '' }
+      email: { host: '', port: 587, user: '', password: '', alertEmail: '' },
+      whatsapp: { adminPhone: '' },
+      lowStockAlert: { enabled: true, method: 'whatsapp' }
     },
     seo: { metaTitle: '', metaDescription: '' }
   });
@@ -43,6 +44,10 @@ export default function AdminSettings() {
           },
           whatsapp: { 
             adminPhone: settings.notifications?.whatsapp?.adminPhone || settings.store?.phone || '' 
+          },
+          lowStockAlert: {
+            enabled: settings.notifications?.lowStockAlert?.enabled ?? true,
+            method: settings.notifications?.lowStockAlert?.method || 'whatsapp'
           }
         },
         seo: { ...formData.seo, ...(settings.seo || {}) },
@@ -73,7 +78,6 @@ export default function AdminSettings() {
 
   const updateStore = (k, v) => setFormData({ ...formData, store: { ...formData.store, [k]: v } });
   const updatePayment = (k, v) => {
-    console.log(`Setting Payment ${k} to:`, v);
     setFormData(prev => ({
       ...prev,
       payment: { ...(prev.payment || {}), [k]: v }
@@ -94,10 +98,10 @@ export default function AdminSettings() {
         </div>
         <button 
           onClick={handleSubmit}
-          disabled={mutation.isLoading}
+          disabled={mutation.isPending}
           className="bg-charcoal text-white px-8 py-4 rounded-2xl font-black text-sm tracking-widest shadow-2xl shadow-charcoal/20 hover:bg-premium-gold transition-all flex items-center gap-3"
         >
-          {mutation.isLoading ? <Loader2 className="animate-spin" size={20} /> : <><Save size={20} /> Save All Changes</>}
+          {mutation.isPending ? <Loader2 className="animate-spin" size={20} /> : <><Save size={20} /> Save All Changes</>}
         </button>
       </div>
 
@@ -109,7 +113,6 @@ export default function AdminSettings() {
             { id: 'payment', label: 'Payment & COD', icon: Wallet },
             { id: 'shipping', label: 'Shipping', icon: Truck },
             { id: 'notifications', label: 'Notifications', icon: BellRing },
-            { id: 'seo', label: 'SEO & Analytics', icon: ShieldCheck },
           ].map(tab => (
             <button
               key={tab.id}
@@ -155,6 +158,27 @@ export default function AdminSettings() {
 
             {activeTab === 'payment' && (
               <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
+                {/* Online Payment Switch */}
+                <div className="p-6 bg-blue-50/50 rounded-[2rem] border border-blue-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <button 
+                        type="button"
+                        onClick={() => updatePayment('onlineEnabled', !formData.payment?.onlineEnabled)}
+                        className={`w-14 h-8 rounded-full relative transition-all duration-300 flex items-center p-1 ${formData.payment?.onlineEnabled ? 'bg-blue-600 shadow-lg shadow-blue-200' : 'bg-gray-300'}`}
+                      >
+                        <div className={`w-6 h-6 bg-white rounded-full transition-transform duration-300 transform ${formData.payment?.onlineEnabled ? 'translate-x-6' : 'translate-x-0'} shadow-md`} />
+                      </button>
+                      <div>
+                        <h3 className="font-black text-charcoal uppercase tracking-tighter">Enable Online Payments</h3>
+                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Master toggle for UPI/Card/NetBanking at checkout</p>
+                      </div>
+                    </div>
+                    <CreditCard className={formData.payment?.onlineEnabled ? 'text-blue-600' : 'text-gray-300'} size={32} />
+                  </div>
+                </div>
+
+                {/* COD Switch */}
                 <div className="p-6 bg-gold-soft/30 rounded-[2rem] border border-premium-gold/10">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -188,17 +212,24 @@ export default function AdminSettings() {
             )}
 
             {activeTab === 'shipping' && (
-              <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+              <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
                 <div className="grid md:grid-cols-2 gap-6">
                   <label className="block">
-                    <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-2 block">Flat Shipping Rate (₹)</span>
-                    <input type="number" className="w-full bg-light-bg border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-premium-gold/30 font-black text-lg" value={formData.shipping.flatRate} onChange={e => updateShipping('flatRate', e.target.value)} />
+                    <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-2 block">Tamil Nadu Shipping (Local) (₹)</span>
+                    <input type="number" className="w-full bg-light-bg border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-premium-gold/30 font-black text-lg" value={formData.shipping.flatRateTN} onChange={e => updateShipping('flatRateTN', e.target.value)} />
+                    <p className="text-[9px] text-premium-gold mt-2 font-bold uppercase">Applied for orders within Tamil Nadu</p>
                   </label>
                   <label className="block">
-                    <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-2 block">Free Shipping Above (₹)</span>
-                    <input type="number" className="w-full bg-light-bg border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-premium-gold/30 font-black text-lg" value={formData.shipping.freeShippingThreshold} onChange={e => updateShipping('freeShippingThreshold', e.target.value)} />
+                    <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-2 block">Other States Shipping (National) (₹)</span>
+                    <input type="number" className="w-full bg-light-bg border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-premium-gold/30 font-black text-lg" value={formData.shipping.flatRateOut} onChange={e => updateShipping('flatRateOut', e.target.value)} />
+                    <p className="text-[9px] text-text-muted mt-2 font-bold uppercase">Applied for all other states in India</p>
                   </label>
                 </div>
+                
+                <label className="block max-w-md">
+                  <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-2 block">Free Shipping Above (₹)</span>
+                  <input type="number" className="w-full bg-light-bg border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-premium-gold/30 font-black text-lg" value={formData.shipping.freeShippingThreshold} onChange={e => updateShipping('freeShippingThreshold', e.target.value)} />
+                </label>
               </motion.div>
             )}
 
@@ -267,25 +298,67 @@ export default function AdminSettings() {
                            placeholder="••••••••••••" />
                       </label>
                    </div>
-                   <div className="p-4 bg-light-bg rounded-2xl border border-dashed border-border-dark/20 text-center">
-                      <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest italic">Note: For Gmail, use an "App Password" if 2FA is enabled.</p>
-                   </div>
-                </div>
-              </motion.div>
+                    <div className="p-4 bg-light-bg rounded-2xl border border-dashed border-border-dark/20 text-center">
+                       <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest italic">Note: For Gmail, use an "App Password" if 2FA is enabled.</p>
+                    </div>
+                 </div>
+
+                 {/* Low Stock Section */}
+                 <div className="space-y-6 pt-6 border-t border-border-light">
+                    <div className="flex items-center justify-between">
+                       <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center text-red-500">
+                             <Percent size={20} />
+                          </div>
+                          <div>
+                             <h3 className="font-black text-charcoal uppercase tracking-tighter">Low Stock Auto Alerts</h3>
+                             <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Get notified when inventory is low</p>
+                          </div>
+                       </div>
+                       <button 
+                         type="button"
+                         onClick={() => setFormData({ ...formData, notifications: { ...formData.notifications, lowStockAlert: { ...formData.notifications.lowStockAlert, enabled: !formData.notifications.lowStockAlert?.enabled } } })}
+                         className={`w-14 h-8 rounded-full relative transition-all duration-300 flex items-center p-1 ${formData.notifications.lowStockAlert?.enabled ? 'bg-red-500 shadow-lg shadow-red-200' : 'bg-gray-300'}`}
+                       >
+                         <div className={`w-6 h-6 bg-white rounded-full transition-transform duration-300 transform ${formData.notifications.lowStockAlert?.enabled ? 'translate-x-6' : 'translate-x-0'} shadow-md`} />
+                       </button>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-6">
+                       <label className="block">
+                          <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-2 block">Alert Email</span>
+                          <input className="w-full bg-light-bg border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-premium-gold/30 font-bold" 
+                            value={formData.notifications.email.alertEmail || ''} 
+                            onChange={e => setFormData({ ...formData, notifications: { ...formData.notifications, email: { ...formData.notifications.email, alertEmail: e.target.value } } })} 
+                            placeholder="alerts@magizhchi.in" />
+                       </label>
+                       <label className="block">
+                          <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-2 block">Notification Method</span>
+                          <select className="w-full bg-light-bg border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-premium-gold/30 font-black text-sm appearance-none" 
+                            value={formData.notifications.lowStockAlert?.method || 'whatsapp'} 
+                            onChange={e => setFormData({ ...formData, notifications: { ...formData.notifications, lowStockAlert: { ...formData.notifications.lowStockAlert, method: e.target.value } } })}>
+                             <option value="whatsapp">WhatsApp Only</option>
+                             <option value="email">Email Only</option>
+                             <option value="both">Both WhatsApp & Email</option>
+                          </select>
+                       </label>
+                    </div>
+                    
+                    <button 
+                      type="button"
+                      onClick={() => toast.promise(adminService.updateSettings({...formData, testAlert: true}), {
+                        loading: 'Sending test alert...',
+                        success: 'Test alert triggered!',
+                        error: 'Failed to send test alert'
+                      })}
+                      className="px-6 py-3 bg-light-bg text-charcoal border border-border-light rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white hover:border-premium-gold transition-all"
+                    >
+                      Send Test Alert
+                    </button>
+                 </div>
+               </motion.div>
             )}
 
-            {activeTab === 'seo' && (
-              <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                 <label className="block">
-                    <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-2 block">Default Meta Title</span>
-                    <input className="w-full bg-light-bg border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-premium-gold/30 font-bold" value={formData.seo.metaTitle} onChange={e => setFormData({ ...formData, seo: { ...formData.seo, metaTitle: e.target.value } })} />
-                  </label>
-                  <label className="block">
-                    <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-2 block">Default Meta Description</span>
-                    <textarea rows="4" className="w-full bg-light-bg border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-premium-gold/30 font-medium resize-none" value={formData.seo.metaDescription} onChange={e => setFormData({ ...formData, seo: { ...formData.seo, metaDescription: e.target.value } })} />
-                  </label>
-              </motion.div>
-            )}
 
           </form>
         </div>

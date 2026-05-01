@@ -4,6 +4,7 @@ import { Image as ImageIcon, Plus, Trash2, ExternalLink, Loader2, Save, X, Toggl
 import { toast } from 'react-hot-toast';
 import { Helmet } from 'react-helmet-async';
 import { adminService, bannerService } from '../../services';
+import SafeImage from '../../components/common/SafeImage';
 
 export default function AdminBanners() {
   const [showForm, setShowForm] = useState(false);
@@ -116,7 +117,7 @@ export default function AdminBanners() {
                   <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] block">Desktop Image</span>
                   <div className="relative group aspect-[21/9] bg-light-bg rounded-2xl overflow-hidden border border-border-light">
                     {formData.desktopImage ? (
-                      <img src={formData.desktopImage} alt="Desktop Preview" className="w-full h-full object-cover" />
+                      <SafeImage src={formData.desktopImage} alt="Desktop Preview" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-text-muted/30"><ImageIcon size={32} /></div>
                     )}
@@ -130,7 +131,7 @@ export default function AdminBanners() {
                   <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] block">Mobile Image</span>
                   <div className="relative group aspect-[1/1] bg-light-bg rounded-2xl overflow-hidden border border-border-light">
                     {formData.mobileImage ? (
-                      <img src={formData.mobileImage} alt="Mobile Preview" className="w-full h-full object-cover" />
+                      <SafeImage src={formData.mobileImage} alt="Mobile Preview" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-text-muted/30"><ImageIcon size={32} /></div>
                     )}
@@ -181,7 +182,7 @@ export default function AdminBanners() {
         {banners?.map(banner => (
           <div key={banner._id} className="bg-white rounded-[2.5rem] border border-border-light overflow-hidden shadow-sm group hover:shadow-xl transition-all duration-500">
             <div className="aspect-[21/9] relative bg-light-bg overflow-hidden">
-              <img src={banner.desktopImage} alt={banner.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
+              <SafeImage src={banner.desktopImage} alt={banner.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                 <button onClick={() => handleEdit(banner)} className="p-4 bg-white text-charcoal rounded-2xl hover:bg-premium-gold hover:text-white transition-all shadow-xl"><Edit3 size={20} /></button>
                 <button onClick={() => { if(window.confirm('Delete this banner?')) deleteMutation.mutate(banner._id); }} className="p-4 bg-white text-stock-out rounded-2xl hover:bg-stock-out hover:text-white transition-all shadow-xl"><Trash2 size={20} /></button>

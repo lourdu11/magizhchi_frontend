@@ -108,7 +108,7 @@ export default function Wishlist() {
 
                 <button
                   onClick={() => addToCartMutation.mutate({ productId: product._id, variant: { size: firstVariant?.size, color: firstVariant?.color } })}
-                  disabled={addToCartMutation.isLoading || !firstVariant}
+                  disabled={addToCartMutation.isPending || !firstVariant}
                   className="mt-4 w-full flex items-center justify-center gap-2 bg-charcoal text-white py-2.5 rounded-xl text-sm font-bold hover:bg-premium-gold hover:text-charcoal transition-all active:scale-95 disabled:opacity-50"
                 >
                   <ShoppingCart size={16} />

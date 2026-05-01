@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion'; // eslint-disable-line no-unused-vars
 
-import { ArrowLeft, Mail, MessageCircle, Eye, EyeOff, CheckCircle, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Mail, MessageCircle, Eye, EyeOff, CheckCircle, ShieldCheck, X } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
@@ -24,6 +24,7 @@ export default function ForgotPassword() {
   const [otpMethod, setOtpMethod] = useState('');
   const [maskedId, setMaskedId] = useState('');
   const [resendTimer, setResendTimer] = useState(0);
+  const [validationError, setValidationError] = useState('');
   const navigate = useNavigate();
 
   const identifierType = isEmailVal(identifier) ? 'email' : isPhoneVal(identifier) ? 'phone' : null;
@@ -71,7 +72,11 @@ export default function ForgotPassword() {
 
       setStep(STEPS.OTP);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to send OTP');
+      const msg = err.response?.data?.message || 'Failed to send OTP';
+      if (err.response?.status === 404) {
+        setValidationError(msg);
+      }
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -203,7 +208,10 @@ export default function ForgotPassword() {
                       <input
                         type="text"
                         value={identifier}
-                        onChange={(e) => setIdentifier(e.target.value)}
+                        onChange={(e) => {
+                          setIdentifier(e.target.value);
+                          if (validationError) setValidationError('');
+                        }}
                         placeholder="9876543210 or you@email.com"
                         className="input"
                         autoComplete="username"
@@ -220,6 +228,22 @@ export default function ForgotPassword() {
                         </p>
                       )}
                     </div>
+
+                    {validationError && (
+                      <div className="bg-red-50 border border-red-100 rounded-xl p-4 mb-2 animate-in fade-in slide-in-from-top-2">
+                        <div className="flex gap-3">
+                          <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center shrink-0">
+                            <X className="text-red-600" size={16} />
+                          </div>
+                          <div>
+                            <p className="text-xs text-red-600 font-bold uppercase tracking-widest mb-1">Account Not Found</p>
+                            <p className="text-sm text-red-800 font-medium leading-relaxed">
+                              {validationError}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <button type="submit" disabled={loading || !identifierType} className="btn-primary w-full py-3.5 disabled:opacity-50">
                       {loading ? 'Sending OTP...' : `Send OTP ${identifierType === 'phone' ? 'on WhatsApp' : identifierType === 'email' ? 'to Email' : ''}`}
                     </button>

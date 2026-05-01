@@ -7,13 +7,14 @@ import { Helmet } from 'react-helmet-async';
 import { toast } from 'react-hot-toast';
 import { cartService, orderService, authService, adminService } from '../services';
 import { useAuthStore, useCartStore } from '../store';
+import { loadRazorpay } from '../utils/scriptLoader';
+import SafeImage from '../components/common/SafeImage';
 
 export default function Checkout() {
   const { isAuthenticated, user } = useAuthStore();
   const { setItemCount } = useCartStore();
   const navigate = useNavigate();
   const [paymentMethod, setPaymentMethod] = useState('cod');
-  const [couponCode, setCouponCode] = useState('');
   const [address, setAddress] = useState({ name: user?.name || '', phone: '', addressLine1: '', addressLine2: '', city: '', state: 'Tamil Nadu', pincode: '' });
   const [guestDetails, setGuestDetails] = useState({ email: '' });
   const [loading, setLoading] = useState(false);
@@ -40,10 +41,17 @@ export default function Checkout() {
 
   // Settings Logic
   const isCodEnabled = storeSettings?.payment?.codEnabled === true;
+  const isOnlineEnabled = storeSettings?.payment?.onlineEnabled !== false;
   const shippingThreshold = Number(storeSettings?.shipping?.freeShippingThreshold ?? 999);
-  const flatRate = Number(storeSettings?.shipping?.flatRate ?? 50);
+  
+  // Calculate dynamic flat rate based on state
+  const isTamilNadu = address.state?.toLowerCase().includes('tamil nadu');
+  const flatRate = isTamilNadu 
+    ? Number(storeSettings?.shipping?.flatRateTN ?? 50) 
+    : Number(storeSettings?.shipping?.flatRateOut ?? 100);
+
   const codExtra = Number(storeSettings?.payment?.codCharges ?? 0);
-  const codMaxLimit = Number(storeSettings?.payment?.codThreshold ?? 5000);
+  const codMaxLimit = Number(storeSettings?.payment?.codThreshold ?? 50000);
 
   // Initialize
   useEffect(() => {
@@ -89,16 +97,18 @@ export default function Checkout() {
       setPaymentMethod('razorpay');
       if (!isWithinCodLimit && isCodEnabled) toast.error(`COD is not available for orders above Rs.${codMaxLimit}`);
     }
-  }, [canUseCod, isWithinCodLimit, paymentMethod, isCodEnabled, codMaxLimit]);
+    if (paymentMethod === 'razorpay' && !isOnlineEnabled) {
+      setPaymentMethod('cod');
+    }
+  }, [canUseCod, isWithinCodLimit, paymentMethod, isCodEnabled, codMaxLimit, isOnlineEnabled]);
 
   const dynamicPaymentMethods = [
-    { id: 'razorpay', label: 'Pay Online', desc: 'Cards, UPI, Netbanking, Wallets', icon: CreditCard },
-    { id: 'cod', label: 'Cash on Delivery', desc: !isWithinCodLimit ? `Limit Rs.${codMaxLimit}` : `Pay on Delivery`, icon: Wallet },
-  ];
+    { id: 'razorpay', label: 'Pay Online', desc: 'Cards, UPI, Netbanking, Wallets', icon: CreditCard, show: isOnlineEnabled },
+    { id: 'cod', label: 'Cash on Delivery', desc: !isWithinCodLimit ? `Limit Rs.${codMaxLimit}` : `Pay on Delivery`, icon: Wallet, show: isCodEnabled },
+  ].filter(m => m.show);
 
   const handlePlaceOrderClick = () => {
     if (!address.name || !address.phone || !address.addressLine1 || !address.city || !address.pincode) return toast.error('Please fill all address fields');
-    if (!isAuthenticated && !guestDetails.email) return toast.error('Email is required for guest checkout');
     if (items.length === 0) return toast.error('Cart is empty');
     setShowConfirmModal(true);
   };
@@ -116,13 +126,20 @@ export default function Checkout() {
 
       const payload = {
         items: orderItems,
-        shippingAddress: address,
+        shippingAddress: {
+          name:         address.name,
+          phone:        address.phone,
+          addressLine1: address.addressLine1,
+          addressLine2: address.addressLine2 || '',
+          city:         address.city || '',
+          state:        address.state,
+          pincode:      address.pincode,
+        },
         paymentMethod,
-        couponCode: couponCode || undefined,
       };
 
       if (!isAuthenticated) {
-        payload.guestDetails = { name: address.name, email: guestDetails.email, phone: address.phone };
+        payload.guestDetails = { name: address.name, phone: address.phone, email: guestDetails.email || '' };
       }
 
       const { data } = await orderService.createOrder(payload);
@@ -138,6 +155,13 @@ export default function Checkout() {
       if (paymentMethod === 'cod') {
         toast.success('Order placed!');
         navigate(`/order-confirmation/${order._id}`);
+        return;
+      }
+
+      // Load Razorpay dynamically
+      const success = await loadRazorpay();
+      if (!success) {
+        toast.error('Failed to load payment gateway. Please check your internet.');
         return;
       }
 
@@ -165,6 +189,19 @@ export default function Checkout() {
     } finally { setLoading(false); }
   };
 
+  const districtsByState = {
+    'Tamil Nadu': ['Ariyalur', 'Chengalpattu', 'Chennai', 'Coimbatore', 'Cuddalore', 'Dharmapuri', 'Dindigul', 'Erode', 'Kallakurichi', 'Kancheepuram', 'Kanyakumari', 'Karur', 'Krishnagiri', 'Madurai', 'Mayiladuthurai', 'Nagapattinam', 'Namakkal', 'Nilgiris', 'Perambalur', 'Pudukkottai', 'Ramanathapuram', 'Ranipet', 'Salem', 'Sivaganga', 'Tenkasi', 'Thanjavur', 'Theni', 'Thoothukudi', 'Tiruchirappalli', 'Tirunelveli', 'Tirupathur', 'Tiruppur', 'Tiruvallur', 'Tiruvannamalai', 'Tiruvarur', 'Vellore', 'Viluppuram', 'Virudhunagar'],
+    'Kerala': ['Alappuzha', 'Ernakulam', 'Idukki', 'Kannur', 'Kasaragod', 'Kollam', 'Kottayam', 'Kozhikode', 'Malappuram', 'Palakkad', 'Pathanamthitta', 'Thiruvananthapuram', 'Thrissur', 'Wayanad'],
+    'Karnataka': ['Bagalkot', 'Ballari', 'Belagavi', 'Bengaluru Rural', 'Bengaluru Urban', 'Bidar', 'Chamarajanagar', 'Chikkaballapur', 'Chikkamagaluru', 'Chitradurga', 'Dakshina Kannada', 'Davanagere', 'Dharwad', 'Gadag', 'Hassan', 'Haveri', 'Kalaburagi', 'Kodagu', 'Kolar', 'Koppal', 'Mandya', 'Mysuru', 'Raichur', 'Ramanagara', 'Shivamogga', 'Tumakuru', 'Udupi', 'Uttara Kannada', 'Vijayapura', 'Yadgir'],
+    'Andhra Pradesh': ['Anantapur', 'Chittoor', 'East Godavari', 'Guntur', 'Kadapa', 'Krishna', 'Kurnool', 'Nellore', 'Prakasam', 'Srikakulam', 'Visakhapatnam', 'Vizianagaram', 'West Godavari'],
+    'Telangana': ['Adilabad', 'Bhadradri Kothagudem', 'Hyderabad', 'Jagtial', 'Jangaon', 'Jayashankar Bhupalpally', 'Jogulamba Gadwal', 'Kamareddy', 'Karimnagar', 'Khammam', 'Kumuram Bheem', 'Mahabubabad', 'Mahabubnagar', 'Mancherial', 'Medak', 'Medchal', 'Mulugu', 'Nagarkurnool', 'Nalgonda', 'Narayanpet', 'Nirmal', 'Nizamabad', 'Peddapalli', 'Rajanna Sircilla', 'Rangareddy', 'Sangareddy', 'Siddipet', 'Suryapet', 'Vikarabad', 'Wanaparthy', 'Warangal (Rural)', 'Warangal (Urban)', 'Yadadri Bhuvanagiri'],
+    'Maharashtra': ['Ahmednagar', 'Akola', 'Amravati', 'Aurangabad', 'Beed', 'Bhandara', 'Buldhana', 'Chandrapur', 'Dhule', 'Gadchiroli', 'Gondia', 'Hingoli', 'Jalgaon', 'Jalna', 'Kolhapur', 'Latur', 'Mumbai City', 'Mumbai Suburban', 'Nagpur', 'Nanded', 'Nandurbar', 'Nashik', 'Osmanabad', 'Palghar', 'Parbhani', 'Pune', 'Raigad', 'Ratnagiri', 'Sangli', 'Satara', 'Sindhudurg', 'Solapur', 'Thane', 'Wardha', 'Washim', 'Yavatmal'],
+    'Delhi': ['Central Delhi', 'East Delhi', 'New Delhi', 'North Delhi', 'North East Delhi', 'North West Delhi', 'Shahdara', 'South Delhi', 'South East Delhi', 'South West Delhi', 'West Delhi'],
+    'Puducherry': ['Karaikal', 'Mahe', 'Puducherry', 'Yanam'],
+  };
+
+  const currentDistricts = districtsByState[address.state] || ['Other'];
+
   return (
     <>
       <Helmet><title>Checkout — Magizhchi Garments</title></Helmet>
@@ -178,25 +215,6 @@ export default function Checkout() {
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-5">
               
-              {!isAuthenticated && (
-                <div className="bg-white rounded-xl border border-border-light p-6">
-                   <div className="flex items-center gap-2 mb-5">
-                    <UserIcon size={20} className="text-premium-gold" />
-                    <h2 className="font-semibold text-text-primary">Contact Information</h2>
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[10px] font-black text-text-muted uppercase tracking-widest block mb-1.5">Email Address (For Order Updates)</label>
-                      <div className="relative">
-                        <Mail size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted" />
-                        <input value={guestDetails.email} onChange={e => setGuestDetails({ email: e.target.value })} className="w-full bg-light-bg border border-border-light rounded-xl pl-11 pr-4 py-3 text-sm focus:ring-1 focus:ring-premium-gold outline-none" placeholder="example@gmail.com" />
-                      </div>
-                    </div>
-                  </div>
-                  <p className="mt-4 text-[10px] text-text-muted italic">Already have an account? <Link to="/login" className="text-premium-gold font-bold underline">Login here</Link> for points and faster checkout.</p>
-                </div>
-              )}
-
               <div className="bg-white rounded-xl border border-border-light p-6">
                 <div className="flex items-center gap-2 mb-5">
                   <MapPin size={20} className="text-premium-gold" />
@@ -209,7 +227,7 @@ export default function Checkout() {
                       <button key={idx} onClick={() => setAddress({ ...addr })} className="min-w-[200px] text-left p-4 rounded-xl border-2 border-light-bg hover:border-premium-gold bg-light-bg/30 transition-all group">
                          <p className="text-[10px] font-black text-premium-gold uppercase tracking-widest mb-1">{addr.type}</p>
                          <p className="text-xs font-bold text-charcoal truncate">{addr.name}</p>
-                         <p className="text-[10px] text-text-muted truncate">{addr.city}, {addr.pincode}</p>
+                         <p className="text-[10px] text-text-muted truncate">{addr.city || addr.district}, {addr.pincode}</p>
                       </button>
                     ))}
                    </div>
@@ -219,7 +237,38 @@ export default function Checkout() {
                   <div><label className="text-[10px] font-black text-text-muted uppercase tracking-widest block mb-1">Full Name</label><input value={address.name} onChange={e => updateAddr('name', e.target.value)} className="input" placeholder="Receiver Name" /></div>
                   <div><label className="text-[10px] font-black text-text-muted uppercase tracking-widest block mb-1">Phone Number</label><input value={address.phone} onChange={e => updateAddr('phone', e.target.value)} className="input" placeholder="Mobile Number" /></div>
                   <div className="sm:col-span-2"><label className="text-[10px] font-black text-text-muted uppercase tracking-widest block mb-1">Street Address</label><input value={address.addressLine1} onChange={e => updateAddr('addressLine1', e.target.value)} className="input" placeholder="House no., Apartment, Street" /></div>
-                  <div><label className="text-[10px] font-black text-text-muted uppercase tracking-widest block mb-1">City</label><input value={address.city} onChange={e => updateAddr('city', e.target.value)} className="input" placeholder="Town / City" /></div>
+                  
+                  <div>
+                    <label className="text-[10px] font-black text-text-muted uppercase tracking-widest block mb-1">City / District</label>
+                    {districtsByState[address.state] ? (
+                      <select value={address.city} onChange={e => updateAddr('city', e.target.value)} className="input appearance-none bg-white">
+                        <option value="">Select City/District</option>
+                        {currentDistricts.map(d => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input value={address.city || ''} onChange={e => updateAddr('city', e.target.value)} className="input" placeholder="Enter City" />
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-black text-text-muted uppercase tracking-widest block mb-1">State</label>
+                    <select value={address.state} onChange={e => {
+                      updateAddr('state', e.target.value);
+                      updateAddr('city', districtsByState[e.target.value]?.[0] || '');
+                    }} className="input appearance-none bg-white">
+                      {['Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chandigarh', 'Chhattisgarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jammu and Kashmir', 'Jharkhand', 'Karnataka', 'Kerala', 'Ladakh', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Puducherry', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'].map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-black text-text-muted uppercase tracking-widest block mb-1">Country</label>
+                    <input value="India" disabled className="input bg-light-bg cursor-not-allowed font-bold" />
+                  </div>
+
                   <div><label className="text-[10px] font-black text-text-muted uppercase tracking-widest block mb-1">Pincode</label><input value={address.pincode} onChange={e => updateAddr('pincode', e.target.value)} className="input" placeholder="6-digit Pincode" /></div>
                 </div>
               </div>
@@ -254,7 +303,7 @@ export default function Checkout() {
                 <div className="space-y-4 max-h-72 overflow-y-auto mb-6 no-scrollbar">
                   {items.map(item => (
                     <div key={item._id} className="flex gap-4">
-                      <img src={item.productId.images?.[0]} className="w-16 h-20 object-cover rounded-xl bg-light-bg" />
+                      <SafeImage src={item.productId.images?.[0]} className="w-16 h-20 object-cover rounded-xl bg-light-bg" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-black text-charcoal line-clamp-1">{item.productId.name}</p>
                         <p className="text-[10px] text-text-muted font-bold mt-1 uppercase">{item.variant.size} / {item.variant.color} × {item.quantity}</p>

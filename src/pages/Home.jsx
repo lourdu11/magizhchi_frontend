@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Truck, RefreshCw, Shield, ShoppingBag, Sparkles } from 'lucide-react';
+import { ArrowRight, Truck, RefreshCw, Shield, ShoppingBag, Sparkles, Loader2 } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { productService, bannerService } from '../services';
 import ProductCard from '../components/product/ProductCard';
+import SafeImage from '../components/common/SafeImage';
 
 const HERO_SLIDES = [
   {
@@ -72,12 +73,18 @@ export default function Home() {
   const { data: bannersData } = useQuery({
     queryKey: ['banners', 'active'],
     queryFn: () => bannerService.getActiveBanners().then(r => r.data.data),
-    select: (data) => [...data]
+    select: (data) => (data || [])
       .filter(b => b.isActive)
       .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0)),
   });
 
+  const { data: catsData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => categoryService.getCategories().then(r => r.data.data?.categories || r.data.data || []),
+  });
+
   const featured = (featuredData?.length > 0) ? featuredData : (allProductsData || []);
+  const homeCategories = catsData?.slice(0, 4) || [];
   
   // Transform dynamic banners to match Hero layout
   const dynamicSlides = bannersData?.map(b => ({
@@ -127,7 +134,7 @@ export default function Home() {
 
 
       {/* ── Hero Section ── */}
-      <section className="relative h-[90vh] md:h-screen w-full bg-charcoal overflow-hidden">
+      <section className="relative h-[65vh] md:h-[80vh] w-full bg-charcoal overflow-hidden">
         <AnimatePresence mode="wait">
           <motion.div 
             key={heroIdx}
@@ -137,7 +144,7 @@ export default function Home() {
             transition={{ duration: 1 }}
             className="absolute inset-0"
           >
-            <img src={slides[heroIdx]?.img || '/placeholder.jpg'} alt="" className="w-full h-full object-cover opacity-60" />
+            <SafeImage src={slides[heroIdx]?.img} alt="" className="w-full h-full object-cover opacity-60" />
             <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent" />
           </motion.div>
         </AnimatePresence>
@@ -222,9 +229,9 @@ export default function Home() {
           </motion.div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
-            {CATEGORIES.map((cat, i) => (
+            {homeCategories.map((cat, i) => (
               <motion.div 
-                key={cat.slug}
+                key={cat.slug || cat._id}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
@@ -242,17 +249,16 @@ export default function Home() {
                     style={{ transformStyle: "preserve-3d" }}
                     className="w-full h-full"
                   >
-                    <img src={cat.img} alt="" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+                    <SafeImage src={cat.image || cat.img} alt="" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80" />
                     <div className="absolute bottom-10 left-8" style={{ transform: "translateZ(50px)" }}>
-                      <p className="text-white font-black text-3xl tracking-tighter mb-1">{cat.name}</p>
+                      <p className="text-white font-black text-3xl tracking-tighter mb-1 uppercase">{cat.name}</p>
                       <div className="inline-block px-4 py-1.5 bg-premium-gold rounded-full">
-                        <p className="text-charcoal text-[8px] font-black uppercase tracking-[0.2em]">{cat.items}</p>
+                        <p className="text-charcoal text-[8px] font-black uppercase tracking-[0.2em]">{cat.items || 'Explore'}</p>
                       </div>
                     </div>
                   </motion.div>
                 </Link>
-
               </motion.div>
             ))}
           </div>
@@ -284,11 +290,11 @@ export default function Home() {
           </motion.div>
 
           {loadingFeatured ? (
-            <div className="grid grid-products">
-              {[...Array(4)].map((_, i) => <div key={i} className="aspect-[3/4] bg-white rounded-[2.5rem] animate-pulse" />)}
+            <div className="h-40 flex items-center justify-center">
+              <Loader2 className="animate-spin text-premium-gold" size={32} />
             </div>
           ) : (
-            <div className="grid-products">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-10">
               {featured.map(product => <ProductCard key={product._id} product={product} />)}
             </div>
           )}

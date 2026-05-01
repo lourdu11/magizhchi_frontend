@@ -73,16 +73,16 @@ export default function WriteReview() {
           {/* Product Quick Info Header */}
           <div className="p-8 md:p-10 bg-charcoal text-white flex flex-col md:flex-row items-center gap-8 border-b border-white/10">
             <div className="w-24 h-24 bg-white rounded-2xl p-2 flex-shrink-0">
-              <img src={product.images[0]} alt={product.name} className="w-full h-full object-contain" />
+              <img src={product?.images?.[0] || '/placeholder.jpg'} alt={product?.name} className="w-full h-full object-contain" />
             </div>
             <div className="text-center md:text-left">
               <h1 className="text-2xl font-black tracking-tight uppercase mb-2">{product.name}</h1>
               <div className="flex items-center justify-center md:justify-start gap-4">
                 <div className="flex items-center gap-1 text-premium-gold text-sm font-bold">
-                  {product.ratings.average.toFixed(1)} <Star size={14} fill="currentColor" />
+                  {(product?.ratings?.average || 0).toFixed(1)} <Star size={14} fill="currentColor" />
                 </div>
                 <div className="w-px h-4 bg-white/20" />
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{product.ratings.count} Ratings</span>
+                <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{product?.ratings?.count || 0} Ratings</span>
               </div>
             </div>
           </div>

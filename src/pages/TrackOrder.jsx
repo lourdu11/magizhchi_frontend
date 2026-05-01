@@ -6,18 +6,26 @@ import { publicService } from '../services';
 import { toast } from 'react-hot-toast';
 
 export default function TrackOrder() {
-  const [form, setForm] = useState({ orderNumber: '', phone: '' });
+  const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [order, setOrder] = useState(null);
 
   const handleTrack = async (e) => {
     e.preventDefault();
-    if (!form.orderNumber && !form.phone) return toast.error('Enter at least Order ID or Phone Number');
+    if (!query) return toast.error('Enter your Order ID or Phone Number');
     
     setLoading(true);
     setOrder(null);
     try {
-      const { data } = await publicService.trackOrder(form);
+      // Determine if it's a phone number (just digits, 10 or more) or order ID
+      const cleanQuery = query.trim();
+      const isPhone = /^\d{10}$/.test(cleanQuery.replace(/\s/g, ''));
+      
+      const payload = isPhone 
+        ? { phone: cleanQuery.replace(/\s/g, '') } 
+        : { orderNumber: cleanQuery.toUpperCase() };
+
+      const { data } = await publicService.trackOrder(payload);
       setOrder(data.data.order);
       toast.success('Order status retrieved!');
     } catch (err) {
@@ -49,39 +57,26 @@ export default function TrackOrder() {
         </div>
 
         {/* Tracking Form */}
-        <div className="bg-white rounded-3xl border border-border-light p-8 shadow-sm mb-10">
-          <form onSubmit={handleTrack} className="grid md:grid-cols-3 gap-4 items-end">
-            <div>
-              <label className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-2 block">Order Number (Optional)</label>
+        <div className="bg-white rounded-3xl border border-border-light p-8 shadow-sm mb-10 max-w-2xl mx-auto">
+          <form onSubmit={handleTrack} className="flex flex-col md:flex-row gap-4 items-stretch">
+            <div className="flex-1">
+              <label className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-2 block">Order ID or Phone Number</label>
               <div className="relative">
-                <Hash size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-premium-gold" />
+                <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-premium-gold" />
                 <input 
-                  className="w-full bg-light-bg border border-border-light rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:ring-1 focus:ring-premium-gold text-sm font-bold uppercase" 
-                  placeholder="ORD-2026..." 
-                  value={form.orderNumber}
-                  onChange={e => setForm({...form, orderNumber: e.target.value.toUpperCase()})}
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-2 block">Phone Number (Optional)</label>
-              <div className="relative">
-                <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-premium-gold" />
-                <input 
-                  type="tel"
-                  className="w-full bg-light-bg border border-border-light rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:ring-1 focus:ring-premium-gold text-sm font-bold" 
-                  placeholder="98765 43210" 
-                  value={form.phone}
-                  onChange={e => setForm({...form, phone: e.target.value.replace(/\D/g, '')})}
+                  className="w-full bg-light-bg border border-border-light rounded-xl pl-11 pr-4 py-4 focus:outline-none focus:ring-2 focus:ring-premium-gold/20 text-sm font-bold placeholder:text-text-muted/40" 
+                  placeholder="e.g. ORD-1234 or 9876543210" 
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
                 />
               </div>
             </div>
             <button 
               type="submit" 
               disabled={loading}
-              className="btn-dark py-3.5 rounded-xl flex items-center justify-center gap-2 text-xs font-black tracking-widest"
+              className="btn-dark px-8 py-4 rounded-xl flex items-center justify-center gap-2 text-xs font-black tracking-widest md:mt-6 transition-all active:scale-95"
             >
-              {loading ? 'Searching...' : <><Search size={16} /> TRACK ORDER</>}
+              {loading ? 'Searching...' : 'TRACK ORDER'}
             </button>
           </form>
         </div>
@@ -97,6 +92,9 @@ export default function TrackOrder() {
               <div className="bg-white rounded-3xl border border-border-light p-10 shadow-lg">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-12 gap-6">
                   <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] font-black text-premium-gold uppercase tracking-widest bg-premium-gold/10 px-2 py-0.5 rounded">Order #{order.orderNumber}</span>
+                    </div>
                     <h3 className="text-xl font-black text-charcoal">Status: <span className="text-premium-gold uppercase">{order.orderStatus.replace(/_/g, ' ')}</span></h3>
                     <p className="text-xs text-text-muted mt-1 font-bold">Estimated Delivery: {order.estimatedDeliveryDate ? new Date(order.estimatedDeliveryDate).toDateString() : 'TBA'}</p>
                   </div>

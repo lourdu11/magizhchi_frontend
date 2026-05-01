@@ -68,6 +68,17 @@ export default function OrderConfirmation() {
         )}
       </div>
 
+      {/* Screenshot Reminder */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-center gap-3">
+        <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center shrink-0">
+          <Package size={20} className="text-amber-600" />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-amber-900">Pro Tip!</p>
+          <p className="text-xs text-amber-800">Please take a <strong>screenshot</strong> of this page for your records.</p>
+        </div>
+      </div>
+
       {/* Order Timeline */}
       <div className="bg-white rounded-2xl border border-border-light p-6 mb-6">
         <h3 className="font-bold text-text-primary mb-5">Order Status</h3>
@@ -126,7 +137,7 @@ export default function OrderConfirmation() {
             <Download size={18} /> Download Invoice
           </a>
         )}
-        <Link to={isAuthenticated ? "/dashboard/orders" : "/track-order"} className="flex-1 flex items-center justify-center gap-2 btn-dark py-3">
+        <Link to={isAuthenticated ? "/dashboard" : "/track-order"} className="flex-1 flex items-center justify-center gap-2 btn-dark py-3">
           <Package size={18} /> Track Order <ArrowRight size={16} />
         </Link>
         <Link to="/collections" className="flex-1 flex items-center justify-center gap-2 py-3 px-6 border-2 border-border-light rounded-xl font-bold text-text-muted hover:text-text-primary transition-colors">

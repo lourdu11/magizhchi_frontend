@@ -3,8 +3,22 @@ import { Helmet } from 'react-helmet-async';
 import { Phone, Mail, MapPin, Clock, MessageCircle, Send, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../services/api';
+import { adminService } from '../services';
+import { useQuery } from '@tanstack/react-query';
 
 export default function Contact() {
+  const { data: settings } = useQuery({
+    queryKey: ['public-settings'],
+    queryFn: () => adminService.getSettings().then(r => r.data.data),
+  });
+
+  const store = settings?.store || {
+    name: 'Magizhchi Garments',
+    email: 'info@magizhchigarments.com',
+    phone: '+91 73588 85452',
+    address: 'Old Bus Stand, Thanjavur, Tamil Nadu — 613001',
+    gstin: '33AAAAA0000A1Z5'
+  };
   const [form, setForm] = useState({ name: '', email: '', phone: '', subject: '', message: '' });
   const [submitting, setSubmitting] = useState(false);
 
@@ -41,22 +55,22 @@ export default function Contact() {
           <div className="bg-dark-gradient rounded-2xl p-8 text-white">
             <h2 className="text-xl font-bold text-premium-gold mb-6">Contact Information</h2>
             <div className="space-y-5">
-              <a href="tel:+917358885452" className="flex items-center gap-4 group">
+              <a href={`tel:${store.phone.replace(/ /g, '')}`} className="flex items-center gap-4 group">
                 <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0 group-hover:bg-premium-gold/20 transition-colors">
                   <Phone size={18} className="text-premium-gold" />
                 </div>
                 <div>
                   <p className="text-xs text-white/50 uppercase tracking-wider">Phone</p>
-                  <p className="font-semibold text-white">+91 73588 85452</p>
+                  <p className="font-semibold text-white">{store.phone}</p>
                 </div>
               </a>
-              <a href="mailto:info@magizhchi.com" className="flex items-center gap-4 group">
+              <a href={`mailto:${store.email}`} className="flex items-center gap-4 group">
                 <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0 group-hover:bg-premium-gold/20 transition-colors">
                   <Mail size={18} className="text-premium-gold" />
                 </div>
                 <div>
                   <p className="text-xs text-white/50 uppercase tracking-wider">Email</p>
-                  <p className="font-semibold text-white">info@magizhchi.com</p>
+                  <p className="font-semibold text-white">{store.email}</p>
                 </div>
               </a>
               <div className="flex items-start gap-4">
@@ -65,7 +79,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <p className="text-xs text-white/50 uppercase tracking-wider">Store Address</p>
-                  <p className="font-semibold text-white">Old Bus Stand,<br />Thanjavur — 613001<br />Tamil Nadu, India</p>
+                  <p className="font-semibold text-white">{store.address}</p>
                 </div>
               </div>
               <div className="flex items-start gap-4">
@@ -81,7 +95,7 @@ export default function Contact() {
             </div>
 
             <a
-              href="https://wa.me/917358885452"
+              href={`https://wa.me/${store.phone.replace(/[^0-9]/g, '')}`}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-8 w-full flex items-center justify-center gap-3 bg-[#25D366] text-white py-3.5 px-6 rounded-xl font-bold hover:bg-[#20BA5A] transition-colors"

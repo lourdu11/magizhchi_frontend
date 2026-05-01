@@ -1,3 +1,5 @@
+// v1.0.1 - Forced Refresh
+// v1.0.1 - Forced Refresh
 import { Routes, Route } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 
@@ -43,6 +45,7 @@ const AdminOrders = lazy(() => import('./pages/admin/AdminOrders'));
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminInventory = lazy(() => import('./pages/admin/AdminInventory'));
 const AdminBills = lazy(() => import('./pages/admin/AdminBills'));
+const AdminBillEntry = lazy(() => import('./pages/admin/AdminBillEntry'));
 const AdminStaff = lazy(() => import('./pages/admin/AdminStaff'));
 const AdminSettings = lazy(() => import('./pages/admin/AdminSettings'));
 const AdminAnalytics = lazy(() => import('./pages/admin/AdminAnalytics'));
@@ -51,6 +54,11 @@ const AdminCoupons = lazy(() => import('./pages/admin/AdminCoupons'));
 const AdminReviews = lazy(() => import('./pages/admin/AdminReviews'));
 const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'));
 const AdminBanners = lazy(() => import('./pages/admin/AdminBanners'));
+const AdminProcurement = lazy(() => import('./pages/admin/AdminProcurement'));
+const AdminCatalog = lazy(() => import('./pages/admin/AdminCatalog'));
+const AdminDailyProfit = lazy(() => import('./pages/admin/AdminDailyProfit'));
+const AdminWastage = lazy(() => import('./pages/admin/AdminWastage'));
+const AdminAudit = lazy(() => import('./pages/admin/AdminAudit'));
 
 // Staff pages
 const StaffLogin = lazy(() => import('./pages/staff/StaffLogin'));
@@ -77,7 +85,7 @@ export default function App() {
           <Route path="/cart" element={<Cart />} />
           <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
           <Route path="/checkout" element={<Checkout />} />
-          <Route path="/order-confirmation/:id" element={<ProtectedRoute><OrderConfirmation /></ProtectedRoute>} />
+          <Route path="/order-confirmation/:id" element={<OrderConfirmation />} />
           <Route path="/dashboard/*" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/about" element={<About />} />
           <Route path="/services" element={<Services />} />
@@ -98,16 +106,28 @@ export default function App() {
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin" element={<ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>}>
           <Route index element={<AdminDashboard />} />
-          <Route path="products" element={<AdminProducts />} />
+          <Route path="staff" element={<AdminStaff />} />
+          <Route path="catalog" element={<AdminCatalog />} />
+          <Route path="products" element={<AdminCatalog />} />
+          <Route path="products/new" element={<AdminProducts />} />
+          <Route path="products/:id" element={<AdminProducts />} />
+          <Route path="inventory" element={<AdminCatalog />} />
           <Route path="orders" element={<AdminOrders />} />
           <Route path="users" element={<AdminUsers />} />
-          <Route path="inventory" element={<AdminInventory />} />
           <Route path="bills" element={<AdminBills />} />
-          <Route path="staff" element={<AdminStaff />} />
+          <Route path="manual-bill-entry" element={<AdminBillEntry />} />
           <Route path="categories" element={<AdminCategories />} />
           <Route path="coupons" element={<AdminCoupons />} />
           <Route path="reviews" element={<AdminReviews />} />
           <Route path="analytics" element={<AdminAnalytics />} />
+          <Route path="procurement" element={<AdminProcurement />} />
+          <Route path="purchases" element={<AdminProcurement />} />
+          <Route path="suppliers" element={<AdminProcurement />} />
+          <Route path="wastage" element={<AdminWastage />} />
+          <Route path="audit" element={<AdminAudit />} />
+          <Route path="reports/daily" element={<AdminDailyProfit />} />
+          <Route path="create-bill" element={<StaffCreateBill />} />
+          <Route path="daily-report" element={<StaffDailyReport />} />
           <Route path="settings" element={<AdminSettings />} />
           <Route path="banners" element={<AdminBanners />} />
         </Route>

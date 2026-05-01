@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import { useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { reviewService } from '../../services';
+import SafeImage from '../../components/common/SafeImage';
 
 export default function AdminReviews() {
   const queryClient = useQueryClient();
@@ -138,7 +139,7 @@ export default function AdminReviews() {
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 border-b border-border-light pb-6">
                   <div className="flex gap-4">
                     <div className="w-16 h-16 bg-light-bg rounded-2xl overflow-hidden p-1 flex-shrink-0">
-                      <img src={review.productId?.images?.[0]} alt="product" className="w-full h-full object-contain" />
+                      <SafeImage src={review.productId?.images?.[0]} alt="product" className="w-full h-full object-contain" />
                     </div>
                     <div className="space-y-1">
                       <h3 className="font-black text-charcoal uppercase tracking-tight text-sm line-clamp-1">{review.productId?.name}</h3>
@@ -180,7 +181,7 @@ export default function AdminReviews() {
                 {review.images?.length > 0 && (
                   <div className="flex gap-2 pt-2">
                     {review.images.map((img, i) => (
-                      <img key={i} src={img} alt="review" className="w-16 h-16 object-cover rounded-xl border border-border-light shadow-sm" />
+                      <SafeImage key={i} src={img} alt="review" className="w-16 h-16 object-cover rounded-xl border border-border-light shadow-sm" />
                     ))}
                   </div>
                 )}

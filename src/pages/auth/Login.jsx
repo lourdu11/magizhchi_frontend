@@ -57,6 +57,21 @@ export default function Login() {
     }
   };
 
+  const handleQuickGuest = async () => {
+    setLoading(true);
+    try {
+      const { data } = await authService.quickGuest();
+      const { user, accessToken } = data.data;
+      setAuth(user, accessToken);
+      toast.success(`Welcome to Magizhchi, ${user.name}! ✨`, { duration: 4000 });
+      navigate(from);
+    } catch (err) {
+      toast.error('Failed to create guest profile. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <>
       <Helmet>
@@ -262,15 +277,26 @@ export default function Login() {
               </motion.button>
             </form>
 
-            {/* Staff link */}
-            <div className="mt-6 pt-6 border-t border-border-light text-center">
-              <p className="text-xs text-text-muted">
-                Staff member?{' '}
-                <Link to="/staff/login" className="text-premium-gold hover:underline font-medium">
-                  Login here
-                </Link>
-              </p>
-            </div>
+              {/* Instant Guest Login */}
+              <div className="relative my-8">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border-light"></div></div>
+                <div className="relative flex justify-center text-xs uppercase tracking-widest"><span className="bg-cream-bg px-4 text-text-muted">Or skip registration</span></div>
+              </div>
+
+              <motion.button
+                type="button"
+                onClick={handleQuickGuest}
+                disabled={loading}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full py-4 rounded-2xl border-2 border-dashed border-premium-gold/30 hover:border-premium-gold bg-premium-gold/5 flex flex-col items-center gap-1 transition-all group"
+              >
+                <div className="flex items-center gap-2 font-black text-[10px] text-premium-gold tracking-[0.2em] uppercase">
+                  <Sparkles size={14} className="animate-pulse" />
+                  Continue as Guest
+                </div>
+                <span className="text-[9px] text-text-muted font-bold opacity-60 group-hover:opacity-100 uppercase tracking-widest">Instant Demo Profile · One Click</span>
+              </motion.button>
           </motion.div>
         </div>
       </div>

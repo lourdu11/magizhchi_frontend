@@ -2,22 +2,30 @@ import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
 
-import { Trash2, ShoppingBag, ArrowRight, Tag } from 'lucide-react';
+import { Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { toast } from 'react-hot-toast';
-import { cartService } from '../services';
+import { cartService, adminService } from '../services';
 import { useAuthStore, useCartStore } from '../store';
 
-const SHIPPING_THRESHOLD = 999;
-const SHIPPING_CHARGE = 50;
+// Fallback shipping constants (overridden by store settings)
+const DEFAULT_SHIPPING_THRESHOLD = 999;
+const DEFAULT_SHIPPING_CHARGE = 50;
 
 export default function Cart() {
   const { isAuthenticated } = useAuthStore();
   const { setItemCount } = useCartStore();
   const queryClient = useQueryClient();
-  const [coupon, setCoupon] = useState('');
   const [localItems, setLocalItems] = useState([]);
+
+  const { data: storeSettings } = useQuery({
+    queryKey: ['public-settings'],
+    queryFn: () => adminService.getPublicSettings().then(r => r.data.data),
+    staleTime: 5 * 60 * 1000,
+  });
+  const shippingThreshold = Number(storeSettings?.shipping?.freeShippingThreshold ?? DEFAULT_SHIPPING_THRESHOLD);
+  const shippingCharge = Number(storeSettings?.shipping?.flatRateTN ?? DEFAULT_SHIPPING_CHARGE);
 
   // Load guest cart from local storage
   useEffect(() => {
@@ -74,7 +82,7 @@ export default function Cart() {
     const price = item.productId?.discountedPrice || item.productId?.sellingPrice || 0;
     return sum + price * item.quantity;
   }, 0);
-  const shipping = subtotal >= SHIPPING_THRESHOLD ? 0 : SHIPPING_CHARGE;
+  const shipping = subtotal >= shippingThreshold ? 0 : shippingCharge;
   const total = subtotal + shipping;
 
   return (
@@ -147,15 +155,6 @@ export default function Cart() {
                 <div className="bg-white rounded-xl border border-border-light p-5 sticky top-24">
                   <h3 className="font-semibold text-text-primary text-base mb-4">Order Summary</h3>
 
-                  {/* Coupon */}
-                  <div className="flex gap-2 mb-4">
-                    <div className="relative flex-1">
-                      <Tag size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-                      <input value={coupon} onChange={e => setCoupon(e.target.value.toUpperCase())}
-                        placeholder="COUPON CODE" className="input pl-8 text-sm py-2.5" />
-                    </div>
-                    <button className="btn-outline py-2.5 px-3 text-sm">Apply</button>
-                  </div>
 
                   {/* Pricing */}
                   <div className="space-y-3 text-sm border-t border-border-light pt-4">
@@ -170,13 +169,13 @@ export default function Cart() {
                       </span>
                     </div>
                     {shipping > 0 && (
-                      <p className="text-xs text-stock-in">Add Rs.{(SHIPPING_THRESHOLD - subtotal).toLocaleString('en-IN')} more for free shipping</p>
+                      <p className="text-xs text-stock-in">Add Rs.{(shippingThreshold - subtotal).toLocaleString('en-IN')} more for free shipping</p>
                     )}
                     <div className="border-t border-border-light pt-3 flex justify-between font-bold text-text-primary text-base">
                       <span>Total</span>
                       <span className="text-premium-gold">Rs.{total.toLocaleString('en-IN')}</span>
                     </div>
-                    <p className="text-xs text-text-muted">Incl. GST (18%)</p>
+                    <p className="text-xs text-text-muted">Incl. GST (5%)</p>
                   </div>
 
                   <Link to="/checkout" className="btn-primary w-full mt-5 flex items-center justify-center gap-2 py-3.5">

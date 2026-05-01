@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -8,6 +8,7 @@ import { toast } from 'react-hot-toast';
 import { productService, cartService, wishlistService, reviewService } from '../services';
 import api from '../services/api';
 import { useAuthStore } from '../store';
+import SafeImage from '../components/common/SafeImage';
 
 export default function ProductDetails() {
   const { slug } = useParams();
@@ -26,16 +27,21 @@ export default function ProductDetails() {
 
   const product = data;
 
-  const sizes = product ? [...new Set(product.variants.map(v => v.size))] : [];
-  const colors = product ? [...new Set(product.variants
-    .filter(v => !selectedSize || v.size === selectedSize)
-    .map(v => v.color))] : [];
+  const sizes = product ? [...new Set(product.variants.map(v => v.size).filter(Boolean))] : [];
+  const colors = product ? [...new Set(product.variants.map(v => v.color).filter(Boolean))] : [];
+
+  // Auto-select if only one option
+  useEffect(() => {
+    if (sizes.length === 1 && !selectedSize) setSelectedSize(sizes[0]);
+    if (colors.length === 1 && !selectedColor) setSelectedColor(colors[0]);
+  }, [sizes, colors]);
 
   const currentVariant = product?.variants.find(
     v => v.size === selectedSize && v.color === selectedColor
   );
 
-  const availableStock = currentVariant ? (currentVariant.stock || 0) - (currentVariant.reservedStock || 0) : 0;
+  // variant.stock from API is already: totalStock - onlineSold - offlineSold - reservedStock + returned - damaged
+  const availableStock = currentVariant ? Math.max(0, currentVariant.stock || 0) : 0;
   const isOutOfStock = selectedSize && selectedColor && availableStock <= 0;
 
   // Sync image with color selection
@@ -136,14 +142,18 @@ export default function ProductDetails() {
           {/* ── Image Gallery ── */}
           <div className="space-y-6">
             <div className="relative aspect-[4/5] rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden bg-light-bg border border-border-light group shadow-xl shadow-black/5">
-              <motion.img 
+              <motion.div
                 key={selectedImage}
                 initial={{ opacity: 0, scale: 1.05 }}
                 animate={{ opacity: 1, scale: 1 }}
-                src={images[selectedImage]} 
-                alt="" 
-                className="w-full h-full object-cover" 
-              />
+                className="w-full h-full"
+              >
+                <SafeImage 
+                  src={images[selectedImage]} 
+                  alt="" 
+                  className="w-full h-full object-cover" 
+                />
+              </motion.div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
               
               {/* Image Nav Dots */}
@@ -157,7 +167,7 @@ export default function ProductDetails() {
             <div className="hidden md:flex gap-4">
               {images.map((img, i) => (
                 <button key={i} onClick={() => setSelectedImage(i)} className={`w-24 aspect-square rounded-2xl overflow-hidden border-2 transition-all ${selectedImage === i ? 'border-premium-gold scale-95 shadow-lg shadow-premium-gold/20' : 'border-transparent hover:border-border-light'}`}>
-                  <img src={img} alt="" className="w-full h-full object-cover" />
+                  <SafeImage src={img} alt="" className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>
@@ -206,11 +216,28 @@ export default function ProductDetails() {
                   Select Color <span>{selectedColor || 'Required'}</span>
                 </p>
                 <div className="flex gap-3 flex-wrap">
-                  {colors.map(color => (
-                    <button key={color} onClick={() => handleColorSelect(color)} className={`px-6 py-3 rounded-2xl text-xs font-black tracking-widest border-2 transition-all ${selectedColor === color ? 'bg-charcoal text-white border-charcoal shadow-xl' : 'bg-white text-charcoal border-border-light hover:border-premium-gold'}`}>
-                      {color.toUpperCase()}
-                    </button>
-                  ))}
+                  {colors.map(color => {
+                    // Check if this color is available at all
+                    const totalColorStock = product.variants
+                      .filter(v => v.color === color)
+                      .reduce((sum, v) => sum + v.stock, 0);
+                    
+                    // Check if available for the SPECIFIC selected size
+                    const variant = product.variants.find(v => v.color === color && v.size === selectedSize);
+                    const isAvailableForSize = selectedSize ? (variant && variant.stock > 0) : totalColorStock > 0;
+
+                    return (
+                      <button 
+                        key={color} 
+                        type="button"
+                        onClick={() => handleColorSelect(color)} 
+                        className={`px-6 py-3 rounded-2xl text-[10px] font-black tracking-widest border-2 transition-all flex flex-col items-center ${selectedColor === color ? 'bg-charcoal text-white border-charcoal shadow-xl' : !isAvailableForSize ? 'bg-light-bg text-text-muted border-transparent opacity-50' : 'bg-white text-charcoal border-border-light hover:border-premium-gold'}`}
+                      >
+                        <span>{color.toUpperCase()}</span>
+                        <span className="text-[8px] opacity-60 uppercase">{!isAvailableForSize ? 'Sold Out' : 'In Stock'}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -221,12 +248,29 @@ export default function ProductDetails() {
                 <p className="text-[10px] font-black uppercase tracking-widest text-text-muted flex items-center justify-between">
                   Select Size <span>{selectedSize || 'Required'}</span>
                 </p>
-                <div className="grid grid-cols-5 gap-3">
-                  {sizes.map(size => (
-                    <button key={size} onClick={() => handleSizeSelect(size)} className={`aspect-square rounded-2xl text-sm font-black border-2 transition-all flex items-center justify-center ${selectedSize === size ? 'bg-charcoal text-white border-charcoal' : 'bg-white text-charcoal border-border-light hover:border-premium-gold'}`}>
-                      {size}
-                    </button>
-                  ))}
+                <div className="flex flex-wrap gap-3">
+                  {sizes.map(size => {
+                    // Check total size stock
+                    const totalSizeStock = product.variants
+                      .filter(v => v.size === size)
+                      .reduce((sum, v) => sum + v.stock, 0);
+
+                    // Check if available for the SPECIFIC selected color
+                    const variant = product.variants.find(v => v.size === size && v.color === selectedColor);
+                    const isAvailableForColor = selectedColor ? (variant && variant.stock > 0) : totalSizeStock > 0;
+                    
+                    return (
+                      <button 
+                        key={size} 
+                        type="button"
+                        onClick={() => handleSizeSelect(size)} 
+                        className={`min-w-[80px] h-12 px-4 rounded-2xl text-sm font-black border-2 transition-all flex flex-col items-center justify-center relative ${selectedSize === size ? 'bg-charcoal text-white border-charcoal shadow-lg' : !isAvailableForColor ? 'bg-light-bg text-text-muted border-transparent opacity-50' : 'bg-white text-charcoal border-border-light hover:border-premium-gold'}`}
+                      >
+                        <span>{size}</span>
+                        <span className="text-[8px] opacity-60">{!isAvailableForColor ? 'OUT' : 'AVAILABLE'}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -412,7 +456,7 @@ function ReviewSection({ productId, slug, averageRating = 0, totalCount = 0 }) {
             <h4 className="text-sm font-black text-charcoal uppercase tracking-[0.2em]">Images from Customers ({allCustomerImages.length})</h4>
             <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4">
               {allCustomerImages.map((img, i) => (
-                <img key={i} src={img} alt="customer" className="w-32 h-32 md:w-40 md:h-40 object-cover rounded-[2rem] border-2 border-border-light flex-shrink-0 hover:border-premium-gold transition-all cursor-pointer shadow-lg" />
+                <SafeImage key={i} src={img} alt="customer" className="w-32 h-32 md:w-40 md:h-40 object-cover rounded-[2rem] border-2 border-border-light flex-shrink-0 hover:border-premium-gold transition-all cursor-pointer shadow-lg" />
               ))}
             </div>
           </div>
@@ -515,7 +559,7 @@ function ReviewSection({ productId, slug, averageRating = 0, totalCount = 0 }) {
               {review.images?.length > 0 && (
                 <div className="flex gap-3 pt-2">
                   {review.images.map((img, i) => (
-                    <img key={i} src={img} alt="review" className="w-20 h-20 object-cover rounded-2xl border border-border-light shadow-md" />
+                    <SafeImage key={i} src={img} alt="review" className="w-20 h-20 object-cover rounded-2xl border border-border-light shadow-md" />
                   ))}
                 </div>
               )}

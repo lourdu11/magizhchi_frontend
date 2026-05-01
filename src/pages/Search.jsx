@@ -16,7 +16,7 @@ export default function Search() {
     queryKey: ['search', q],
     queryFn: () => productService.searchProducts(q).then(r => r.data.data),
     enabled: q.length > 1,
-    keepPreviousData: true,
+    placeholderData: (prev) => prev,
   });
 
   const products = data?.products || data || [];

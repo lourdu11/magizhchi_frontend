@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cartService, wishlistService } from '../../services';
 import { useAuthStore } from '../../store';
 import { toast } from 'react-hot-toast';
+import SafeImage from '../common/SafeImage';
 
 export default function ProductCard({ product }) {
   const { isAuthenticated } = useAuthStore();
@@ -67,11 +68,11 @@ export default function ProductCard({ product }) {
             transition: { type: "spring", stiffness: 300, damping: 20 }
           }}
           style={{ transformStyle: "preserve-3d" }}
-          className="relative aspect-[3/4] rounded-[2rem] md:rounded-[2.5rem] overflow-hidden bg-light-bg mb-4 border border-border-light group-hover:border-premium-gold/30 transition-all duration-500 shadow-sm group-hover:shadow-2xl group-hover:shadow-premium-gold/10"
+          className="relative aspect-[4/5] max-w-xs mx-auto rounded-[2rem] md:rounded-[2.5rem] overflow-hidden bg-light-bg mb-4 border border-border-light group-hover:border-premium-gold/30 transition-all duration-500 shadow-sm group-hover:shadow-2xl group-hover:shadow-premium-gold/10"
         >
 
-          <img
-            src={product.images?.[0] || 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?q=80&w=600&auto=format&fit=crop'}
+          <SafeImage
+            src={product.images?.[0]}
             alt={product.name}
             className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
             loading="lazy"
@@ -79,20 +80,16 @@ export default function ProductCard({ product }) {
 
           {/* Labels */}
           <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
-            {product.isNewArrival && (
+            {isOutOfStock && (
+              <span className="bg-red-600 text-white text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-full shadow-lg shadow-red-500/20">Sold Out</span>
+            )}
+            {product.isNewArrival && !isOutOfStock && (
               <span className="bg-charcoal text-white text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-full">New</span>
             )}
-            {hasDiscount && (
+            {hasDiscount && !isOutOfStock && (
               <span className="bg-premium-gold text-charcoal text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-full">-{product.discountPercentage}%</span>
             )}
           </div>
-
-          {/* Out of Stock Overlay */}
-          {isOutOfStock && (
-            <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center z-20">
-              <span className="text-charcoal font-black uppercase tracking-widest text-xs border-2 border-charcoal px-4 py-2">Sold Out</span>
-            </div>
-          )}
 
           {/* Wishlist Button (Always Visible) */}
           <div className="absolute top-4 right-4 z-30">

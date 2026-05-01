@@ -4,14 +4,15 @@ import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingBag, Heart, User, Menu, X, ChevronDown, Sparkles } from 'lucide-react';
 import { useAuthStore, useCartStore, useUIStore } from '../../store';
-import { cartService } from '../../services';
+import { cartService, categoryService } from '../../services';
+import SafeImage from '../common/SafeImage';
 
 const NAV_LINKS = [
   { label: 'Home', path: '/' },
   { label: 'Collections', path: '/collections', hasDropdown: true },
-  { label: 'Services', path: '/services' },
   { label: 'Track Order', path: '/track-order' },
   { label: 'About', path: '/about' },
+  { label: 'Services', path: '/services' },
   { label: 'Contact', path: '/contact' },
 ];
 
@@ -41,6 +42,15 @@ export default function Header() {
     queryFn: () => cartService.getCart().then(r => r.data.data.cart),
     enabled: isAuthenticated,
   });
+
+  const { data: catsData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => categoryService.getCategories().then(r => r.data.data?.categories || r.data.data || []),
+  });
+
+  const categories = catsData?.length > 0 
+    ? [{ label: 'All Essentials', path: '/collections' }, ...catsData.map(c => ({ label: c.name, path: `/collections/${c.slug}` }))]
+    : [{ label: 'All Essentials', path: '/collections' }];
 
   useEffect(() => {
     if (cartData?.items) setItemCount(cartData.items.length);
@@ -72,7 +82,7 @@ export default function Header() {
 
   return (
     <>
-      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-700 will-change-transform ${scrolled ? 'glass h-20 md:h-24 shadow-2xl shadow-black/10' : 'bg-transparent h-24 md:h-32'} ${!visible ? '-translate-y-full md:translate-y-0' : 'translate-y-0'}`}>
+      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-700 will-change-transform ${scrolled ? 'glass h-16 md:h-20 shadow-2xl shadow-black/10' : 'bg-transparent h-20 md:h-24'} ${!visible ? '-translate-y-full md:translate-y-0' : 'translate-y-0'}`}>
         <div className="container-custom h-full">
 
           {/* ─────────────────────────────────────────────
@@ -96,7 +106,7 @@ export default function Header() {
             {/* Center: logo (naturally centred because both sides are flex-1) */}
             <div className="flex-1 flex justify-center">
               <Link to="/" className="flex items-center gap-2 leading-none mt-[-12px]" style={{ textDecoration: 'none' }}>
-                <img
+                <SafeImage
                   src="https://ik.imagekit.io/Lourdu/magizhchi_garments/maghchi%20image/IMG-20251126-WA0043.jpg?updatedAt=1772379265473"
                   alt="Magizhchi"
                   className={`w-auto aspect-square object-cover rounded-full transition-all duration-500 flex-shrink-0 ${scrolled ? 'h-7' : 'h-9'}`}
@@ -148,7 +158,7 @@ export default function Header() {
                   style={{ transformStyle: "preserve-3d" }}
                   className="perspective-1000"
                 >
-                  <img src="https://ik.imagekit.io/Lourdu/magizhchi_garments/maghchi%20image/IMG-20251126-WA0043.jpg?updatedAt=1772379265473" alt="Magizhchi" className={`transition-all duration-500 w-auto aspect-square object-cover rounded-full ${scrolled ? 'h-10 md:h-14' : 'h-12 md:h-16'}`} />
+                  <SafeImage src="https://ik.imagekit.io/Lourdu/magizhchi_garments/maghchi%20image/IMG-20251126-WA0043.jpg?updatedAt=1772379265473" alt="Magizhchi" className={`transition-all duration-500 w-auto aspect-square object-cover rounded-full ${scrolled ? 'h-8 md:h-12' : 'h-10 md:h-14'}`} />
                 </motion.div>
                 <div className="flex flex-col transition-all duration-500 overflow-hidden">
                   <motion.span
@@ -174,13 +184,13 @@ export default function Header() {
                     {link.label} {link.hasDropdown && <ChevronDown size={12} className={`transition-transform duration-300 ${showDropdown ? 'rotate-180' : ''}`} />}
                   </Link>
                   {link.hasDropdown && (
-                    <AnimatePresence>
+                    <AnimatePresence mode="wait">
                       {showDropdown && (
                         <motion.div
                           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
                           className="absolute top-full left-0 mt-4 w-64 glass rounded-[2rem] shadow-2xl border border-white/40 overflow-hidden py-4"
                         >
-                          {CATEGORIES.map(cat => (
+                          {categories.map(cat => (
                             <Link key={cat.path} to={cat.path} className="flex items-center gap-3 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-charcoal/60 hover:text-premium-gold hover:bg-premium-gold/5 transition-all">
                               <Sparkles size={12} className="text-premium-gold/40" /> {cat.label}
                             </Link>
@@ -211,7 +221,7 @@ export default function Header() {
                     <button onClick={() => setShowUserMenu(!showUserMenu)} className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg transition-all ${showUserMenu ? 'bg-premium-gold text-charcoal' : 'bg-charcoal text-premium-gold hover:scale-105'}`}>
                       <User size={18} />
                     </button>
-                    <AnimatePresence>
+                    <AnimatePresence mode="wait">
                       {showUserMenu && (
                         <motion.div
                           initial={{ opacity: 0, y: 15, rotateX: -15, scale: 0.95 }}
@@ -244,7 +254,7 @@ export default function Header() {
 
       </header>
 
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {isMobileMenuOpen && (
           <>
             <motion.div
@@ -261,7 +271,7 @@ export default function Header() {
             >
               <div className="flex-none flex items-center justify-between px-6 py-5 border-b border-gray-100">
                 <Link to="/" onClick={() => setMobileMenu(false)} className="flex items-center gap-3">
-                  <img src="https://ik.imagekit.io/Lourdu/magizhchi_garments/maghchi%20image/IMG-20251126-WA0043.jpg?updatedAt=1772379265473" alt="Logo" className="h-9 w-auto aspect-square object-cover rounded-full" />
+                  <SafeImage src="https://ik.imagekit.io/Lourdu/magizhchi_garments/maghchi%20image/IMG-20251126-WA0043.jpg?updatedAt=1772379265473" alt="Logo" className="h-9 w-auto aspect-square object-cover rounded-full" />
                   <div className="flex flex-col leading-none">
                     <span className="font-black text-[15px] tracking-tight text-charcoal">MAGIZHCHI</span>
                     <span className="font-black text-[8px] tracking-[0.28em] text-premium-gold uppercase mt-0.5">GARMENTS</span>
@@ -301,7 +311,7 @@ export default function Header() {
                   className="pt-5"
                 >
                   <p className="text-[9px] font-black uppercase tracking-[0.3em] text-premium-gold mb-3">Collections</p>
-                  {CATEGORIES.map((cat, idx) => (
+                  {categories.map((cat, idx) => (
                     <motion.div
                       key={cat.path}
                       initial={{ opacity: 0, x: -10 }}

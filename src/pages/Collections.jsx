@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams, useParams } from 'react-router-dom';
+import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion'; // eslint-disable-line no-unused-vars
 
-import { Grid2X2, List, ChevronDown, X, SlidersHorizontal, Search } from 'lucide-react';
+import { Grid2X2, List, ChevronDown, X, SlidersHorizontal, Search, Loader2 } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { productService, categoryService } from '../services';
 import ProductCard from '../components/product/ProductCard';
@@ -26,18 +26,6 @@ const PRICE_RANGES = [
   { label: 'Above Rs.5000', min: 5000, max: 99999 },
 ];
 
-function ProductSkeleton() {
-  return (
-    <div className="card-product overflow-hidden">
-      <div className="skeleton aspect-[3/4]" />
-      <div className="p-3 space-y-2">
-        <div className="skeleton h-3 w-16 rounded" />
-        <div className="skeleton h-4 w-full rounded" />
-        <div className="skeleton h-5 w-20 rounded" />
-      </div>
-    </div>
-  );
-}
 
 
 function FilterPanel({ categoriesData, category, selectedSizes, minPrice, maxPrice, toggleSize, updateParams, clearFilters, hasFilters }) {
@@ -130,6 +118,7 @@ export default function Collections() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const { category } = useParams();
+  const navigate = useNavigate();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
 
@@ -163,7 +152,11 @@ export default function Collections() {
       if (value !== undefined && value !== null && value !== '') p.set(key, value); 
       else p.delete(key);
     });
-    p.set('page', '1');
+
+    // Only reset to page 1 if we are NOT explicitly changing the page
+    if (!updates.page) {
+      p.set('page', '1');
+    }
 
     // If searching, navigate to global collections (remove category slug)
     if (updates.search && category) {
@@ -201,7 +194,7 @@ export default function Collections() {
       isBestSeller: searchParams.get('isBestSeller') || undefined,
       isNewArrival: searchParams.get('isNewArrival') || undefined,
     }).then(r => r.data),
-    keepPreviousData: true,
+    placeholderData: (prev) => prev,
   });
 
   const { data: categoriesData } = useQuery({
@@ -320,8 +313,8 @@ export default function Collections() {
 
               {/* Products Grid */}
               {isLoading ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 md:gap-6">
-                  {Array(12).fill(0).map((_, i) => <ProductSkeleton key={i} />)}
+                <div className="h-60 flex items-center justify-center">
+                  <Loader2 className="animate-spin text-premium-gold" size={40} />
                 </div>
               ) : products.length === 0 ? (
                 <div className="text-center py-24">

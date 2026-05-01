@@ -19,16 +19,18 @@ const STATUS_COLORS = {
 export default function AdminOrders() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [page, setPage] = useState(1);
   const [updatingId, setUpdatingId] = useState(null);
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-orders', search, statusFilter],
-    queryFn: () => adminService.getAllOrders({ search, status: statusFilter }).then(r => r.data),
+    queryKey: ['admin-orders', search, statusFilter, page],
+    queryFn: () => adminService.getAllOrders({ search, status: statusFilter, page, limit: 10 }).then(r => r.data),
   });
 
   const orders = data?.data?.orders || data?.data || [];
-  const total = data?.pagination?.total || orders.length;
+  const pagination = data?.pagination;
+  const total = pagination?.total || orders.length;
 
   const updateStatus = useMutation({
     mutationFn: ({ id, status }) => adminService.updateOrderStatus(id, { status }),
@@ -38,8 +40,16 @@ export default function AdminOrders() {
 
   const downloadCSV = () => {
     if (!orders.length) return;
-    const headers = ['Order #', 'Customer', 'Email', 'Amount', 'Status', 'Payment', 'Date'];
-    const rows = orders.map(o => [o.orderNumber, o.userId?.name || 'Guest', o.userId?.email || o.guestDetails?.email || '-', o.pricing?.totalAmount, o.orderStatus, o.paymentMethod, new Date(o.createdAt).toLocaleDateString('en-IN')]);
+    const headers = ['Order #', 'Customer', 'Email/Phone', 'Amount', 'Status', 'Payment', 'Date'];
+    const rows = orders.map(o => [
+      o.orderNumber, 
+      o.shippingAddress?.name || o.userId?.name || 'Guest', 
+      o.guestDetails?.email || o.userId?.email || o.shippingAddress?.phone || '-', 
+      o.pricing?.totalAmount, 
+      o.orderStatus, 
+      o.paymentMethod, 
+      new Date(o.createdAt).toLocaleDateString('en-IN')
+    ]);
     const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'orders.csv'; a.click();
@@ -65,11 +75,11 @@ export default function AdminOrders() {
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted" size={16} />
-          <input className="w-full bg-white border border-border-light rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-premium-gold text-sm" placeholder="Search by order # or customer..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="w-full bg-white border border-border-light rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-premium-gold text-sm" placeholder="Search by order # or customer..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
         </div>
         <div className="relative">
           <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={14} />
-          <select className="appearance-none bg-white border border-border-light rounded-xl pl-9 pr-8 py-2.5 focus:outline-none text-sm" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+          <select className="appearance-none bg-white border border-border-light rounded-xl pl-9 pr-8 py-2.5 focus:outline-none text-sm" value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}>
             <option value="">All Statuses</option>
             {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
           </select>
@@ -82,7 +92,7 @@ export default function AdminOrders() {
         {['placed', 'shipped', 'delivered', 'cancelled'].map(s => {
           const count = orders.filter(o => o.orderStatus === s).length;
           return (
-            <button key={s} onClick={() => setStatusFilter(statusFilter === s ? '' : s)} className={`text-xs font-bold px-3 py-1.5 rounded-full transition-all ${statusFilter === s ? 'bg-charcoal text-white' : STATUS_COLORS[s]}`}>
+            <button key={s} onClick={() => { setStatusFilter(statusFilter === s ? '' : s); setPage(1); }} className={`text-xs font-bold px-3 py-1.5 rounded-full transition-all ${statusFilter === s ? 'bg-charcoal text-white' : STATUS_COLORS[s]}`}>
               {s}: {count}
             </button>
           );
@@ -114,8 +124,22 @@ export default function AdminOrders() {
                     <p className="text-[10px] text-text-muted">{new Date(o.createdAt).toLocaleDateString('en-IN')}</p>
                   </td>
                   <td className="px-5 py-4">
-                    <p className="font-semibold text-text-primary text-sm">{o.userId?.name || 'Guest'}</p>
-                    <p className="text-xs text-text-muted truncate max-w-[160px]">{o.userId?.email || o.guestDetails?.email}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-text-primary text-sm">{o.shippingAddress?.name || o.userId?.name || 'Guest'}</p>
+                      {o.isGuestOrder ? (
+                        <span className="text-[9px] font-black bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded border border-amber-200 uppercase tracking-tighter">Guest</span>
+                      ) : (
+                        <span className="text-[9px] font-black bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-200 uppercase tracking-tighter">Member</span>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <p className="text-[10px] text-text-muted truncate max-w-[160px] flex items-center gap-1">
+                        <span className="font-bold opacity-50">E:</span> {o.guestDetails?.email || o.userId?.email || 'Not Provided'}
+                      </p>
+                      <p className="text-[10px] text-text-muted flex items-center gap-1">
+                        <span className="font-bold opacity-50">P:</span> {o.shippingAddress?.phone || o.userId?.phone || 'Not Provided'}
+                      </p>
+                    </div>
                   </td>
                   <td className="px-5 py-4">
                     <p className="text-sm text-text-muted">{o.items?.length} item{o.items?.length !== 1 ? 's' : ''}</p>
@@ -135,7 +159,8 @@ export default function AdminOrders() {
                     </span>
                   </td>
                   <td className="px-5 py-4 text-xs text-text-muted whitespace-nowrap">
-                    {new Date(o.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    <p>{new Date(o.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                    <p className="text-[10px] opacity-70 mt-0.5">{new Date(o.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
                   </td>
                   <td className="px-5 py-4">
                     {!['delivered', 'cancelled', 'returned'].includes(o.orderStatus) ? (
@@ -143,7 +168,7 @@ export default function AdminOrders() {
                         <select
                           className="appearance-none bg-light-bg border border-border-light rounded-lg px-3 py-1.5 text-xs focus:outline-none pr-6 cursor-pointer"
                           value={o.orderStatus}
-                          disabled={updateStatus.isLoading && updatingId === o._id}
+                          disabled={updateStatus.isPending && updatingId === o._id}
                           onChange={e => { setUpdatingId(o._id); updateStatus.mutate({ id: o._id, status: e.target.value }); }}
                         >
                           {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
@@ -159,6 +184,41 @@ export default function AdminOrders() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {pagination && pagination.pages > 1 && (
+          <div className="px-5 py-4 border-t border-border-light flex items-center justify-between gap-4 bg-light-bg/30">
+            <p className="text-xs text-text-muted font-medium">
+              Showing page {page} of {pagination.pages}
+            </p>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 text-xs font-bold border border-border-light rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                Prev
+              </button>
+              {Array.from({ length: Math.min(5, pagination.pages) }, (_, i) => {
+                const p = Math.max(1, Math.min(page - 2, pagination.pages - 4)) + i;
+                if (p < 1 || p > pagination.pages) return null;
+                return (
+                  <button key={p} onClick={() => setPage(p)}
+                    className={`w-8 h-8 rounded-lg text-xs font-black transition-all ${p === page ? 'bg-charcoal text-white shadow-lg' : 'border border-border-light hover:border-premium-gold bg-white'}`}>
+                    {p}
+                  </button>
+                );
+              })}
+              <button 
+                onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
+                disabled={page === pagination.pages}
+                className="px-3 py-1.5 text-xs font-bold border border-border-light rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

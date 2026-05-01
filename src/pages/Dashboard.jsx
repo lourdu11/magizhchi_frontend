@@ -83,14 +83,14 @@ function MyOrders() {
 
 // ── Profile Tab
 function Profile() {
-  const { user, setUser } = useAuthStore();
+  const { user, updateUser } = useAuthStore();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ name: user?.name || '', phone: user?.phone || '' });
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '' });
 
   const updateMutation = useMutation({
     mutationFn: (data) => api.put('/users/profile', data),
-    onSuccess: (r) => { setUser(r.data.data); toast.success('Profile updated'); setEditing(false); },
+    onSuccess: (r) => { updateUser(r.data.data); toast.success('Profile updated'); setEditing(false); },
   });
   const pwMutation = useMutation({
     mutationFn: (data) => api.put('/users/change-password', data),
@@ -121,8 +121,8 @@ function Profile() {
             <label className="block"><span className="text-xs font-bold text-text-muted uppercase mb-1 block">Phone</span>
               <input className="w-full bg-light-bg border border-border-light rounded-xl px-4 py-2.5" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} /></label>
           </div>
-          <button onClick={() => updateMutation.mutate(form)} disabled={updateMutation.isLoading} className="btn-dark flex items-center gap-2 px-6 py-2.5">
-            {updateMutation.isLoading ? <Loader2 className="animate-spin" size={14} /> : <><Check size={14} /> Save</>}
+          <button onClick={() => updateMutation.mutate(form)} disabled={updateMutation.isPending} className="btn-dark flex items-center gap-2 px-6 py-2.5">
+            {updateMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <><Check size={14} /> Save</>}
           </button>
         </div>
       )}
@@ -135,8 +135,8 @@ function Profile() {
           <label className="block"><span className="text-xs font-bold text-text-muted uppercase mb-1 block">New Password</span>
             <input type="password" className="w-full bg-light-bg border border-border-light rounded-xl px-4 py-2.5" value={pwForm.newPassword} onChange={e => setPwForm({...pwForm, newPassword: e.target.value})} /></label>
         </div>
-        <button onClick={() => pwMutation.mutate(pwForm)} disabled={pwMutation.isLoading} className="btn-dark flex items-center gap-2 px-6 py-2.5">
-          {pwMutation.isLoading ? <Loader2 className="animate-spin" size={14} /> : 'Change Password'}
+        <button onClick={() => pwMutation.mutate(pwForm)} disabled={pwMutation.isPending} className="btn-dark flex items-center gap-2 px-6 py-2.5">
+          {pwMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : 'Change Password'}
         </button>
       </div>
     </div>
@@ -145,18 +145,18 @@ function Profile() {
 
 // ── Addresses Tab
 function Addresses() {
-  const { user, setUser } = useAuthStore();
+  const { user, updateUser } = useAuthStore();
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ type: 'home', name: '', phone: '', addressLine1: '', addressLine2: '', city: '', state: '', pincode: '', isDefault: false });
   const qc = useQueryClient();
 
   const addMutation = useMutation({
     mutationFn: (data) => api.post('/users/addresses', data),
-    onSuccess: (r) => { setUser(r.data.data); toast.success('Address added'); setAdding(false); qc.invalidateQueries(['auth-me']); },
+    onSuccess: (r) => { updateUser(r.data.data); toast.success('Address added'); setAdding(false); qc.invalidateQueries(['auth-me']); },
   });
   const deleteMutation = useMutation({
     mutationFn: (id) => api.delete(`/users/addresses/${id}`),
-    onSuccess: (r) => { setUser(r.data.data); toast.success('Address removed'); },
+    onSuccess: (r) => { updateUser(r.data.data); toast.success('Address removed'); },
   });
 
   return (
@@ -177,8 +177,8 @@ function Addresses() {
             ))}
           </div>
           <div className="flex gap-3">
-            <button onClick={() => addMutation.mutate(form)} disabled={addMutation.isLoading} className="btn-dark px-6 py-2.5 flex items-center gap-2">
-              {addMutation.isLoading ? <Loader2 className="animate-spin" size={14} /> : 'Save Address'}
+            <button onClick={() => addMutation.mutate(form)} disabled={addMutation.isPending} className="btn-dark px-6 py-2.5 flex items-center gap-2">
+              {addMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : 'Save Address'}
             </button>
             <button onClick={() => setAdding(false)} className="text-sm text-text-muted">Cancel</button>
           </div>

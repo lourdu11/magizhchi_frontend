@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 import { MessageCircle, Mail, Phone, MapPin, Share2 } from 'lucide-react';
+import { adminService } from '../../services';
+import { useQuery } from '@tanstack/react-query';
 
 // Custom Social Icons since Lucide removed Brand Icons
 const Instagram = ({ size = 18, ...props }) => (
@@ -18,15 +20,27 @@ const Facebook = ({ size = 18, ...props }) => (
   </svg>
 );
 
+
 export default function Footer() {
+  const { data: settings } = useQuery({
+    queryKey: ['public-settings'],
+    queryFn: () => adminService.getSettings().then(r => r.data.data),
+  });
 
   const year = new Date().getFullYear();
+  const store = settings?.store || {
+    name: 'Magizhchi Garments',
+    email: 'info@magizhchigarments.com',
+    phone: '+91 73588 85452',
+    address: 'Old Bus Stand, Thanjavur, Tamil Nadu — 613001',
+    gstin: '33AAAAA0000A1Z5'
+  };
 
   const socialLinks = [
     { icon: Instagram, href: 'https://instagram.com/magizhchigarments', title: 'Instagram' },
     { icon: Facebook, href: 'https://facebook.com/magizhchigarments', title: 'Facebook' },
-    { icon: Phone, href: 'tel:+917358885452', title: 'Call Us' },
-    { icon: MessageCircle, href: 'https://wa.me/917358885452', title: 'WhatsApp' },
+    { icon: Phone, href: `tel:${store.phone.replace(/ /g, '')}`, title: 'Call Us' },
+    { icon: MessageCircle, href: `https://wa.me/${store.phone.replace(/[^0-9]/g, '')}`, title: 'WhatsApp' },
   ];
 
   return (
@@ -60,8 +74,12 @@ export default function Footer() {
                 style={{ transformStyle: "preserve-3d" }}
                 className="perspective-1000"
               >
-                <div className="font-display text-2xl font-black tracking-[0.15em] text-white group-hover/flogo:text-premium-gold transition-colors" style={{ transform: "translateZ(30px)" }}>MAGIZHCHI</div>
-                <div className="text-[9px] text-white/40 tracking-[0.4em] uppercase font-black" style={{ transform: "translateZ(10px)" }}>GARMENTS</div>
+                <div className="font-display text-2xl font-black tracking-[0.15em] text-white group-hover/flogo:text-premium-gold transition-colors uppercase" style={{ transform: "translateZ(30px)" }}>
+                  {store.name.split(' ')[0]}
+                </div>
+                <div className="text-[9px] text-white/40 tracking-[0.4em] uppercase font-black" style={{ transform: "translateZ(10px)" }}>
+                  {store.name.split(' ').slice(1).join(' ') || 'GARMENTS'}
+                </div>
               </motion.div>
             </Link>
             <p className="text-white/50 text-sm leading-relaxed mb-6 font-medium">
@@ -135,15 +153,15 @@ export default function Footer() {
             <ul className="space-y-3">
               <li className="flex gap-2.5 text-white/50 text-sm">
                 <Phone size={14} className="text-premium-gold mt-0.5 shrink-0" />
-                <a href="tel:+917358885452" className="hover:text-premium-gold transition-colors">+91 73588 85452</a>
+                <a href={`tel:${store.phone.replace(/ /g, '')}`} className="hover:text-premium-gold transition-colors">{store.phone}</a>
               </li>
               <li className="flex gap-2.5 text-white/50 text-sm">
                 <Mail size={14} className="text-premium-gold mt-0.5 shrink-0" />
-                <a href="mailto:info@magizhchigarments.com" className="hover:text-premium-gold transition-colors">info@magizhchigarments.com</a>
+                <a href={`mailto:${store.email}`} className="hover:text-premium-gold transition-colors">{store.email}</a>
               </li>
               <li className="flex gap-2.5 text-white/50 text-sm">
                 <MapPin size={14} className="text-premium-gold mt-0.5 shrink-0" />
-                <span>Old Bus Stand, Thanjavur, Tamil Nadu — 613001</span>
+                <span>{store.address}</span>
               </li>
             </ul>
             <div className="mt-4 p-3 bg-white/5 rounded-lg border border-white/10">
@@ -155,7 +173,7 @@ export default function Footer() {
 
         {/* Bottom Bar */}
         <div className="mt-10 pt-6 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-3">
-          <p className="text-white/30 text-xs">© {year} Magizhchi Garments. All rights reserved. GSTIN: 33AAAAA0000A1Z5</p>
+          <p className="text-white/30 text-xs">© {year} {store.name}. All rights reserved. {store.gstin && `GSTIN: ${store.gstin}`}</p>
           <div className="flex items-center gap-4">
             <img src="https://razorpay.com/favicon.png" alt="Razorpay" className="h-4 opacity-40" />
             <span className="text-white/30 text-xs">Secured by Razorpay</span>

@@ -10,6 +10,8 @@ import { toast } from 'react-hot-toast';
 import { Helmet } from 'react-helmet-async';
 import { billService, productService, categoryService } from '../../services';
 import { useAuthStore } from '../../store';
+import { resolveAssetURL } from '../../utils/assetResolver';
+import SafeImage from '../../components/common/SafeImage';
 
 // ─── Constants ─────────────────────────────────────────
 const SHORTCUTS = [
@@ -56,7 +58,7 @@ export default function StaffCreateBill() {
       if (search) params.search = search;
       return productService.getProducts(params).then(r => r.data.data?.products || r.data.data || []);
     },
-    keepPreviousData: true,
+    placeholderData: (prev) => prev,
   });
 
   // ─── Keyboard Shortcuts ──────────────────────────────
@@ -113,8 +115,9 @@ export default function StaffCreateBill() {
         price: product.discountedPrice || product.sellingPrice,
         mrp: product.sellingPrice,
         quantity: 1,
-        image: product.images?.[0],
-        maxStock: variant.stock
+        image: resolveAssetURL(product.images?.[0]),
+        maxStock: variant.stock,
+        gstPercentage: product.gstPercentage || 5
       }];
     });
     setSelectedProduct(null); // Close modal if open
@@ -189,22 +192,55 @@ export default function StaffCreateBill() {
     toast.success('Bill resumed');
   };
 
-  const handleSearchKeyDown = (e) => {
+  const handleSearchKeyDown = async (e) => {
     if (e.key === 'Enter' && search.trim() !== '') {
-      const match = productsData?.find(p => p.sku.toLowerCase() === search.toLowerCase());
-      if (match) {
-        handleProductClick(match);
-        setSearch(''); // Auto clear after successful scan
-      } else {
-        toast.error('Barcode not found');
+      const code = search.trim();
+      setSearch(''); // Clear for next scan immediately
+
+      try {
+        // 1. Try Variant-specific Barcode/SKU first (from Inventory)
+        const invRes = await billService.getByBarcode(code);
+        const invItem = invRes.data.data?.item || invRes.data.data;
+        
+        if (invItem) {
+          // Find the product to get display info
+          const prodRes = await productService.getProduct(invItem.productRef?.slug || invItem.productRef?._id);
+          const product = prodRes.data.data?.product || prodRes.data.data;
+          
+          if (product) {
+            addToCart(product, {
+              size: invItem.size,
+              color: invItem.color,
+              stock: invItem.availableStock
+            });
+            return;
+          }
+        }
+
+        // 2. Fallback: Search in pre-fetched productsData (Product-level SKU)
+        const match = productsData?.find(p => p.sku?.toLowerCase() === code.toLowerCase());
+        if (match) {
+          handleProductClick(match);
+          return;
+        }
+
+        toast.error('Item not found');
+      } catch (err) {
+        toast.error('Search error');
       }
     }
   };
 
   // ─── Totals ──────────────────────────────────────────
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
-  const tax = Math.round(subtotal * 0.05); // 5% GST for garments
-  const total = subtotal + tax - discount;
+  // GST is INCLUSIVE in Indian garment prices
+  const tax = items.reduce((sum, item) => {
+    const itemTotal = item.price * item.quantity;
+    const rate = (item.gstPercentage || 5) / 100;
+    const taxableValue = itemTotal / (1 + rate);
+    return sum + (itemTotal - taxableValue);
+  }, 0);
+  const total = subtotal - discount;
 
   // ─── Mutation ────────────────────────────────────────
   const createBillMutation = useMutation({
@@ -263,8 +299,11 @@ export default function StaffCreateBill() {
           {/* Header Section */}
           <div className="bg-charcoal p-12 text-center text-white relative">
             <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--premium-gold)_0%,_transparent_70%)]" />
+            <div className="w-16 h-16 bg-premium-gold rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-2xl shadow-premium-gold/20">
+              <Sparkles className="text-charcoal" size={32} />
+            </div>
             <h2 className="font-display text-4xl font-black tracking-[0.4em] mb-2 uppercase">MAGIZHCHI</h2>
-            <p className="text-[9px] text-premium-gold font-black tracking-[0.6em] uppercase mb-8">Curated Menswear</p>
+            <p className="text-[9px] text-premium-gold font-black tracking-[0.6em] uppercase mb-8">Official Tax Invoice</p>
             
             <div className="inline-flex items-center gap-4 px-6 py-2 bg-white/5 border border-white/10 rounded-full">
               <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Invoice No.</span>
@@ -309,7 +348,7 @@ export default function StaffCreateBill() {
                   <div key={i} className="flex items-center justify-between py-4 border-b border-border-light last:border-0 group">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-14 bg-light-bg rounded-xl overflow-hidden border border-border-light group-hover:scale-105 transition-transform">
-                        <img src={item.productId?.images?.[0] || '/placeholder.jpg'} alt="" className="w-full h-full object-cover" />
+                        <SafeImage src={item.productId?.images?.[0]} alt="" className="w-full h-full object-cover" />
                       </div>
                       <div>
                         <p className="text-sm font-black text-charcoal tracking-tight">{item.productName}</p>
@@ -446,6 +485,12 @@ export default function StaffCreateBill() {
         <div className="hidden lg:flex items-center gap-10">
           <div className="flex items-center gap-8 border-x border-border-light px-8">
             <div className="text-center group cursor-pointer">
+              <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1 group-hover:text-premium-gold transition-colors">Daily Progress</p>
+              <div className="w-32 h-2 bg-light-bg rounded-full overflow-hidden mt-2 relative">
+                <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-premium-gold to-orange-400 w-[65%]" />
+              </div>
+            </div>
+            <div className="text-center group cursor-pointer">
               <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1 group-hover:text-premium-gold transition-colors">Total Sales</p>
               <div className="flex items-center gap-2">
                 <p className="text-lg font-black text-charcoal tracking-tighter">₹42,500</p>
@@ -542,7 +587,16 @@ export default function StaffCreateBill() {
                 {productsData.map(product => (
                   <div key={product._id} onClick={() => handleProductClick(product)} className="bg-light-bg rounded-[1.5rem] border border-border-light overflow-hidden group hover:border-premium-gold hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col h-full">
                     <div className="relative aspect-[4/5] overflow-hidden bg-white shrink-0">
-                      <img src={product.images?.[0] || '/placeholder.jpg'} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                      <SafeImage 
+                        src={product.images?.[0]} 
+                        alt="" 
+                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                      />
+                      <div className="absolute top-2 left-2 flex flex-col gap-1">
+                        {product.variants?.some(v => v.stock > 0 && v.stock < 5) && (
+                          <div className="bg-red-500 text-white text-[7px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest shadow-lg animate-pulse">Low Stock</div>
+                        )}
+                      </div>
                       <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm text-[8px] font-black px-2 py-1 rounded-md text-charcoal border border-border-light shadow-sm">
                         {product.sku}
                       </div>
@@ -570,7 +624,7 @@ export default function StaffCreateBill() {
                 {productsData.map(product => (
                   <div key={product._id} onClick={() => handleProductClick(product)} className="flex items-center gap-4 bg-white p-3 rounded-2xl border border-border-light hover:border-premium-gold hover:shadow-md transition-all cursor-pointer group">
                     <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0">
-                      <img src={product.images?.[0] || '/placeholder.jpg'} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                      <SafeImage src={product.images?.[0]} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm font-bold text-charcoal truncate">{product.name}</h3>
@@ -703,7 +757,7 @@ export default function StaffCreateBill() {
               className="relative w-full max-w-3xl bg-white rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col md:flex-row h-[500px]"
             >
               <div className="w-full md:w-2/5 bg-light-bg relative hidden md:block">
-                <img src={selectedProduct.images?.[0] || '/placeholder.jpg'} alt="" className="w-full h-full object-cover" />
+                <SafeImage src={selectedProduct.images?.[0]} alt="" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-charcoal/80 via-transparent to-transparent" />
                 <div className="absolute bottom-6 left-6 right-6">
                    <h3 className="text-white font-black text-xl leading-tight line-clamp-2">{selectedProduct.name}</h3>
